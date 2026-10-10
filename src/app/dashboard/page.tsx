@@ -6,7 +6,7 @@ import { BotStatus, BotStatusFallback } from "@/components/bot-status";
 import { DashHeader } from "@/components/dash-header";
 import { LoginPrompt } from "@/components/login-prompt";
 import { Note } from "@/components/note";
-import { IconArrowRight, IconDiscord } from "@/components/icons";
+import { IconDiscord } from "@/components/icons";
 import { loadAdminGuilds } from "@/lib/auth";
 import { guildIconUrl } from "@/lib/discord";
 
@@ -63,6 +63,8 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   }
 
   const { session, adminGuilds, botGuildIds } = result.data;
+  const botServers = adminGuilds.filter((guild) => botGuildIds.has(guild.id));
+  const hiddenCount = adminGuilds.length - botServers.length;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -70,9 +72,9 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">เซิร์ฟเวอร์ของคุณ</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">เซิร์ฟเวอร์ของคุณ</h1>
             <p className="mt-1 text-sm text-slate-500">
-              เลือกเซิร์ฟเวอร์ที่คุณเป็นผู้ดูแลเพื่อจัดการบอทและดูประวัติ
+              แสดงทุกเซิร์ฟเวอร์ที่มีบอทอยู่ (และคุณมีสิทธิ์จัดการ) — กดการ์ดเพื่อดูประวัติและตั้งค่า
             </p>
           </div>
           <Suspense fallback={<BotStatusFallback />}>
@@ -82,12 +84,12 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
 
         {loginState === "failed" ? <Note tone="rose">เข้าสู่ระบบไม่สำเร็จ — กรุณาลองใหม่อีกครั้ง</Note> : null}
 
-        {adminGuilds.length === 0 ? (
+        {botServers.length === 0 ? (
           <div className="card mt-8 p-10 text-center">
             <p className="text-sm leading-6 text-slate-600">
-              ยังไม่พบเซิร์ฟเวอร์ที่คุณมีสิทธิ์ผู้ดูแล
+              ยังไม่พบเซิร์ฟเวอร์ที่มีบอทอยู่ และคุณมีสิทธิ์ผู้ดูแล
               <br />
-              เชิญบอทเข้าเซิร์ฟเวอร์ก่อน แล้วกลับมาที่หน้านี้อีกครั้ง
+              เชิญบอทเข้าเซิร์ฟเวอร์ก่อน แล้วกลับมาที่นี่อีกครั้ง
             </p>
             <a href={INVITE_URL} target="_blank" rel="noreferrer" className="btn-primary mt-6">
               <IconDiscord className="h-4 w-4" />
@@ -96,35 +98,36 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
           </div>
         ) : (
           <ul className="mt-8 grid gap-4 sm:grid-cols-2">
-            {adminGuilds.map((guild) => {
+            {botServers.map((guild) => {
               const icon = guildIconUrl(guild, 64);
-              const botIn = botGuildIds.has(guild.id);
               return (
                 <li key={guild.id}>
                   <Link
                     href={`/dashboard/${guild.id}`}
-                    className="card flex items-center gap-4 p-4 transition-colors hover:border-blue-300"
+                    className="card flex items-center gap-4 p-5 transition-colors hover:border-blue-300"
                   >
                     {icon ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={icon} alt="" width={44} height={44} className="h-11 w-11 rounded-full bg-slate-100" />
+                      <img
+                        src={icon}
+                        alt=""
+                        width={44}
+                        height={44}
+                        className="h-11 w-11 shrink-0 rounded-full bg-slate-100"
+                      />
                     ) : (
-                      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700">
                         {guild.name.slice(0, 2)}
                       </span>
                     )}
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium text-slate-900">{guild.name}</span>
-                      <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <span className="block truncate font-semibold text-slate-900">{guild.name}</span>
+                      <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {guild.owner ? <Badge tone="slate">เจ้าของ</Badge> : null}
-                        {botIn ? (
-                          <Badge tone="green">บอทอยู่ในเซิร์ฟเวอร์</Badge>
-                        ) : (
-                          <Badge tone="amber">ยังไม่ได้เพิ่มบอท</Badge>
-                        )}
+                        <Badge tone="green">บอทอยู่ในเซิร์ฟเวอร์</Badge>
                       </span>
                     </span>
-                    <IconArrowRight className="h-4 w-4 shrink-0 text-slate-300" />
+                    <span className="btn-primary btn-sm shrink-0">จัดการ</span>
                   </Link>
                 </li>
               );
@@ -132,9 +135,17 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
           </ul>
         )}
 
-        <p className="mt-10 text-center text-xs text-slate-400">
-          แดชบอร์ดแสดงเฉพาะเซิร์ฟเวอร์ที่คุณเป็นเจ้าของหรือมีสิทธิ์ผู้ดูแล (Administrator / Manage Server)
-        </p>
+        <div className="mt-8 flex flex-col items-center gap-2">
+          {hiddenCount > 0 ? (
+            <p className="text-xs text-slate-400">
+              ซ่อน {hiddenCount} เซิร์ฟเวอร์ที่ยังไม่มีบอท — ที่นี่แสดงเฉพาะดิสที่มีบอทอยู่
+            </p>
+          ) : null}
+          <a href={INVITE_URL} target="_blank" rel="noreferrer" className="btn-secondary btn-sm">
+            <IconDiscord className="h-3.5 w-3.5" />
+            เพิ่มบอทเข้าเซิร์ฟเวอร์อื่น
+          </a>
+        </div>
       </main>
     </div>
   );

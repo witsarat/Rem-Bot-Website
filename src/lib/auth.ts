@@ -5,6 +5,14 @@
  */
 import { getSession, type SessionUser } from "./session";
 import { DiscordApiError, fetchBotGuildIds, fetchUserGuilds, isAdminGuild, type DiscordGuild } from "./discord";
+import { getBotGuildIdsFromDb } from "./db";
+
+/** หา id ดิสที่บอทอยู่ — อ่านจากตาราง bot_guilds (บอทเขียนไว้) ก่อน แล้วค่อย fallback ไปถาม REST */
+async function resolveBotGuildIds(): Promise<Set<string>> {
+  const fromDb = await getBotGuildIdsFromDb();
+  if (fromDb) return fromDb;
+  return fetchBotGuildIds().catch(() => new Set<string>());
+}
 
 export type { SessionUser };
 
@@ -26,7 +34,7 @@ export async function loadAdminGuilds(): Promise<AccessResult<AdminGuildsData>> 
   try {
     const [guilds, botGuildIds] = await Promise.all([
       fetchUserGuilds(session.accessToken),
-      fetchBotGuildIds().catch(() => new Set<string>()),
+      resolveBotGuildIds(),
     ]);
     const adminGuilds = guilds
       .filter(isAdminGuild)
@@ -57,7 +65,7 @@ export async function loadGuildAccess(guildId: string): Promise<AccessResult<Gui
     const guild = guilds.find((item) => item.id === guildId);
     if (!guild || !isAdminGuild(guild)) return { ok: false, reason: "no-access" };
 
-    const botGuildIds = await fetchBotGuildIds().catch(() => new Set<string>());
+    const botGuildIds = await resolveBotGuildIds();
     return { ok: true, data: { session, guild, botGuildIds } };
   } catch (error) {
     console.error("[auth] โหลดข้อมูลจาก Discord ไม่สำเร็จ:", error);

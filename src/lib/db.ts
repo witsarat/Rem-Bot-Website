@@ -234,3 +234,21 @@ export async function getSiteStats(): Promise<SiteStats | null> {
     return null;
   }
 }
+
+// ─────────────────────────── bot_guilds (ดิสที่บอทอยู่) ───────────────────────────
+
+/**
+ * รายชื่อ id เซิร์ฟเวอร์ที่มีบอทอยู่ (จากตาราง bot_guilds ที่บอทเขียนไว้)
+ * คืน null = อ่านไม่ได้/ยังไม่มีตาราง → ให้ผู้เรียก fallback ไปใช้ REST แทน
+ */
+export async function getBotGuildIdsFromDb(): Promise<Set<string> | null> {
+  const db = getPool();
+  if (!db) return null;
+  try {
+    const result = await db.query<{ guild_id: string }>("SELECT guild_id FROM bot_guilds");
+    return new Set(result.rows.map((row) => row.guild_id));
+  } catch (error) {
+    console.error("[web/db] อ่านรายชื่อดิสของบอทจาก DB ไม่สำเร็จ:", error);
+    return null;
+  }
+}
