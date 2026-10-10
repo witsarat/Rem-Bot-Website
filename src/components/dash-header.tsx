@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Brand } from "./brand";
 import { avatarUrl } from "@/lib/discord";
-import { isOwner } from "@/lib/owner";
 import type { SessionUser } from "@/lib/session";
 
 /** แถบหัวของหน้าแดชบอร์ด — โลโก้ + ผู้ใช้ปัจจุบัน (หรือลิงก์หน้าแรกถ้ายังไม่ login) */
@@ -26,11 +25,6 @@ export function DashHeader({ session }: { session: SessionUser | null }) {
             <span className="hidden max-w-40 truncate text-sm font-medium text-slate-700 sm:block">
               {session.displayName}
             </span>
-            {isOwner(session.id) ? (
-              <Link href="/settings" className="text-sm text-slate-500 transition-colors hover:text-slate-800">
-                ตั้งค่าบอท
-              </Link>
-            ) : null}
             <a href="/api/auth/logout" className="text-sm text-slate-500 transition-colors hover:text-slate-800">
               ออกจากระบบ
             </a>
