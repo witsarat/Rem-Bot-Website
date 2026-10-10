@@ -207,3 +207,61 @@ export async function getVoiceStatEvents(guildId: string, since: Date | null): P
   );
   return result.rows;
 }
+
+// ─────────────────────────── bot_settings (Rich Presence) ───────────────────────────
+
+export interface BotPresenceSettings {
+  activityType: string;
+  activityText: string;
+  status: string;
+}
+
+export const DEFAULT_BOT_PRESENCE: BotPresenceSettings = {
+  activityType: "Watching",
+  activityText: "บันทึก Voice Log 🔊",
+  status: "online",
+};
+
+/** อ่านค่าสถานะบอท (ไม่มีแถว/อ่านไม่ได้ → ค่าเริ่มต้น) */
+export async function getBotPresence(): Promise<BotPresenceSettings> {
+  const db = getPool();
+  if (!db) return { ...DEFAULT_BOT_PRESENCE };
+  try {
+    const result = await db.query<{ activity_type: string; activity_text: string; status: string }>(
+      "SELECT activity_type, activity_text, status FROM bot_settings ORDER BY id LIMIT 1",
+    );
+    if (!result.rows.length) return { ...DEFAULT_BOT_PRESENCE };
+    const row = result.rows[0];
+    return { activityType: row.activity_type, activityText: row.activity_text, status: row.status };
+  } catch (error) {
+    console.error("[web/db] อ่านค่า Rich Presence ไม่สำเร็จ:", error);
+    return { ...DEFAULT_BOT_PRESENCE };
+  }
+}
+
+/** บันทึกค่าสถานะบอท (สร้างตารางให้เองถ้ายังไม่มี — กันเว็บ deploy ก่อนบอท) */
+export async function saveBotPresence(settings: BotPresenceSettings): Promise<void> {
+  const db = getPool();
+  if (!db) throw new Error("DATABASE_URL ยังไม่ได้ตั้งค่า");
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS bot_settings (
+      id INTEGER PRIMARY KEY,
+      activity_type TEXT NOT NULL,
+      activity_text TEXT NOT NULL,
+      status TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  await db.query(
+    `INSERT INTO bot_settings (id, activity_type, activity_text, status, updated_at)
+     VALUES (1, $1, $2, $3, now())
+     ON CONFLICT (id)
+     DO UPDATE SET activity_type = EXCLUDED.activity_type,
+                   activity_text = EXCLUDED.activity_text,
+                   status = EXCLUDED.status,
+                   updated_at = now()`,
+    [settings.activityType, settings.activityText, settings.status],
+  );
+}
