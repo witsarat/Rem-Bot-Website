@@ -59,21 +59,49 @@ export class DiscordApiError extends Error {
   }
 }
 
-/** เรียก Discord API พร้อม retry อัตโนมัติ 1 ครั้ง สำหรับ error ชั่วคราว (5xx / 429 / network) */
+// ───────────────────────── แคชในหน่วยความจำ (ลดการยิง Discord REST ซ้ำ) ─────────────────────────
+// แคชอยู่ต่อ instance ของ Vercel — จุดสำคัญคือ "เว็บต้องไม่ยิง Discord ถี่"
+// เพราะ /users/@me/guilds ถูกจำกัดอัตรา (429) และการ retry ถี่จะซ้ำเติมโควตา
+
+interface CacheEntry<T> {
+  at: number;
+  data: T;
+}
+
+const USER_GUILDS_TTL_MS = 180_000; // 3 นาที — รายชื่อดิสของผู้ใช้สดพอ
+const CHANNELS_TTL_MS = 300_000; // 5 นาที — รายชื่อห้องเปลี่ยนไม่บ่อย
+const CACHE_KEEP_MS = 30 * 60_000; // เก็บของเก่าไว้ใช้ยามฉุกเฉินได้ไม่เกิน 30 นาที
+
+const userGuildsCache = new Map<string, CacheEntry<DiscordGuild[]>>();
+const guildChannelsCache = new Map<string, CacheEntry<DiscordChannel[]>>();
+
+/** ล้างรายการแคชที่เก่าเกินกำหนด (กันหน่วยความจำบวม) */
+function pruneCache<K, V extends CacheEntry<unknown>>(map: Map<K, V>, maxAgeMs: number): void {
+  const now = Date.now();
+  for (const [key, entry] of map) {
+    if (now - entry.at > maxAgeMs) map.delete(key);
+  }
+}
+
+/** เรียก Discord API — timeout กันค้าง, retry แบบสุภาพ (เคารพ retry-after สูงสุด 1.5 วิ) */
 async function fetchDiscord(url: string, init: RequestInit, attempts = 2): Promise<Response> {
   let lastError: unknown = null;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
-      const res = await fetch(url, { ...init, cache: "no-store" });
+      const res = await fetch(url, { ...init, cache: "no-store", signal: AbortSignal.timeout(8_000) });
       if (res.status >= 500 || res.status === 429) {
         lastError = new DiscordApiError(res.status, `Discord ตอบสถานะ ${res.status}`);
-        await new Promise((resolve) => setTimeout(resolve, 450));
+        if (attempt + 1 < attempts) {
+          const retryAfter = Number(res.headers.get("retry-after")) || 0;
+          const waitMs = retryAfter > 0 ? Math.min(retryAfter * 1000, 1500) : 450;
+          await new Promise((resolve) => setTimeout(resolve, waitMs));
+        }
         continue;
       }
       return res;
     } catch (error) {
       lastError = error;
-      await new Promise((resolve) => setTimeout(resolve, 450));
+      if (attempt + 1 < attempts) await new Promise((resolve) => setTimeout(resolve, 450));
     }
   }
   throw lastError instanceof Error ? lastError : new Error("เชื่อมต่อ Discord ไม่ได้");
@@ -129,11 +157,32 @@ export async function fetchMe(accessToken: string): Promise<DiscordUser> {
 }
 
 export async function fetchUserGuilds(accessToken: string): Promise<DiscordGuild[]> {
-  const res = await fetchDiscord(`${API_BASE}/users/@me/guilds`, {
-    headers: { authorization: `Bearer ${accessToken}` },
-  });
-  if (!res.ok) throw new DiscordApiError(res.status, `ดึงรายชื่อเซิร์ฟเวอร์ไม่สำเร็จ (${res.status})`);
-  return (await res.json()) as DiscordGuild[];
+  const cached = userGuildsCache.get(accessToken);
+  const now = Date.now();
+  if (cached && now - cached.at < USER_GUILDS_TTL_MS) return cached.data;
+
+  try {
+    const res = await fetchDiscord(`${API_BASE}/users/@me/guilds`, {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) throw new DiscordApiError(res.status, `ดึงรายชื่อเซิร์ฟเวอร์ไม่สำเร็จ (${res.status})`);
+    const guilds = (await res.json()) as DiscordGuild[];
+    pruneCache(userGuildsCache, CACHE_KEEP_MS);
+    userGuildsCache.set(accessToken, { at: now, data: guilds });
+    return guilds;
+  } catch (error) {
+    // 429/5xx/เน็ตสะดุด → ใช้ข้อมูลเดิมชั่วคราว ดีกว่าให้แดชบอร์ดพังทั้งหน้า
+    // (แต่ 401 = token หมดอายุจริง — ต้องแจ้งให้ login ใหม่ ไม่ใช้ของเก่า)
+    const status = error instanceof DiscordApiError ? error.status : 0;
+    if (cached && status !== 401) {
+      console.warn(
+        "[discord] ใช้แคชรายชื่อเซิร์ฟเวอร์เดิมชั่วคราว:",
+        error instanceof Error ? error.message : error,
+      );
+      return cached.data;
+    }
+    throw error;
+  }
 }
 
 // ───────────────────────── Bot token ─────────────────────────
@@ -149,16 +198,36 @@ export async function fetchBotGuildIds(): Promise<Set<string>> {
   return new Set(guilds.map((guild) => guild.id));
 }
 
-/** รายชื่อห้องข้อความ (text + announcement) ของเซิร์ฟเวอร์ — ใช้ทำ dropdown ตั้งค่า */
+/** รายชื่อห้องข้อความ (text + announcement) ของเซิร์ฟเวอร์ — ใช้ทำ dropdown ตั้งค่า (แคช 5 นาที) */
 export async function fetchGuildTextChannels(guildId: string): Promise<DiscordChannel[]> {
+  const cached = guildChannelsCache.get(guildId);
+  const now = Date.now();
+  if (cached && now - cached.at < CHANNELS_TTL_MS) return cached.data;
+
   const token = getBotToken();
   if (!token) return [];
-  const res = await fetchDiscord(`${API_BASE}/guilds/${guildId}/channels`, {
-    headers: { authorization: `Bot ${token}` },
-  });
-  if (!res.ok) throw new DiscordApiError(res.status, `ดึงรายชื่อห้องไม่สำเร็จ (${res.status})`);
-  const channels = (await res.json()) as DiscordChannel[];
-  return channels.filter((channel) => channel.type === 0 || channel.type === 5).sort((a, b) => a.position - b.position);
+  try {
+    const res = await fetchDiscord(`${API_BASE}/guilds/${guildId}/channels`, {
+      headers: { authorization: `Bot ${token}` },
+    });
+    if (!res.ok) throw new DiscordApiError(res.status, `ดึงรายชื่อห้องไม่สำเร็จ (${res.status})`);
+    const channels = (await res.json()) as DiscordChannel[];
+    const filtered = channels
+      .filter((channel) => channel.type === 0 || channel.type === 5)
+      .sort((a, b) => a.position - b.position);
+    pruneCache(guildChannelsCache, CACHE_KEEP_MS);
+    guildChannelsCache.set(guildId, { at: now, data: filtered });
+    return filtered;
+  } catch (error) {
+    if (cached) {
+      console.warn(
+        "[discord] ใช้แคชรายชื่อห้องเดิมชั่วคราว:",
+        error instanceof Error ? error.message : error,
+      );
+      return cached.data;
+    }
+    throw error;
+  }
 }
 
 // ───────────────────────── สิทธิ์ ─────────────────────────
