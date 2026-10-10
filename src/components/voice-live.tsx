@@ -26,7 +26,7 @@ function timeTH(iso: string | null): string {
   }).format(new Date(iso));
 }
 
-/** การ์ด "ห้องเสียงตอนนี้" — รีเฟรชอัตโนมัติทุก 20 วินาที */
+/** การ์ด "ห้องเสียงตอนนี้" — แสดงเฉพาะห้องที่มีคนอยู่ · รีเฟรชอัตโนมัติทุก 20 วินาที */
 export function VoiceLive({ guildId, initial }: { guildId: string; initial: VoiceSnapshot | null }) {
   const [snapshot, setSnapshot] = useState<VoiceSnapshot | null>(initial);
 
@@ -49,6 +49,13 @@ export function VoiceLive({ guildId, initial }: { guildId: string; initial: Voic
     };
   }, [guildId]);
 
+  const activeChannels = snapshot
+    ? snapshot.channels.filter((channel) =>
+        snapshot.occupants.some((person) => person.channelId === channel.id),
+      )
+    : [];
+  const emptyTotal = snapshot ? snapshot.channels.length - activeChannels.length : 0;
+
   return (
     <section className="mt-6">
       <div className="card p-6">
@@ -64,57 +71,50 @@ export function VoiceLive({ guildId, initial }: { guildId: string; initial: Voic
           </p>
         </div>
 
-        {!snapshot || snapshot.channels.length === 0 ? (
+        {!snapshot ? (
           <p className="mt-4 text-sm text-slate-500">
-            {snapshot
-              ? "ไม่พบห้องเสียงในเซิร์ฟเวอร์นี้"
-              : "ยังไม่มีข้อมูล — บอทกำลังซิงก์ข้อมูลสักครู่ แล้วลองรีเฟรชอีกครั้ง"}
+            ยังไม่มีข้อมูล — บอทกำลังซิงก์ข้อมูลสักครู่ แล้วลองรีเฟรชอีกครั้ง
+          </p>
+        ) : activeChannels.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">
+            ตอนนี้ไม่มีใครอยู่ในห้องเสียง — เมื่อมีคนเข้าห้อง เดี๋ยวรายชื่อจะขึ้นที่นี่เอง
           </p>
         ) : (
           <div className="mt-4 space-y-3">
-            {snapshot.channels.map((channel) => {
+            {activeChannels.map((channel) => {
               const people = snapshot.occupants.filter((person) => person.channelId === channel.id);
-              const isActive = people.length > 0;
               return (
-                <div
-                  key={channel.id}
-                  className={`rounded-xl border p-3.5 ${
-                    isActive ? "border-blue-200 bg-blue-50/40" : "border-slate-200 bg-slate-50/50"
-                  }`}
-                >
+                <div key={channel.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3.5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`text-sm font-semibold ${isActive ? "text-slate-900" : "text-slate-500"}`}>
-                      {channel.name}
-                    </span>
+                    <span className="text-sm font-semibold text-slate-900">{channel.name}</span>
                     <span className="text-[11px] text-slate-400">
                       {channel.userLimit ? `${people.length}/${channel.userLimit} คน` : `${people.length} คน`}
                     </span>
                   </div>
-                  {isActive ? (
-                    <div className="mt-2.5 flex flex-wrap gap-2">
-                      {people.map((person) => (
-                        <span
-                          key={person.userId}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-2.5 text-xs font-medium text-slate-700"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={avatarUrl(person.userId, person.avatar)}
-                            alt=""
-                            width={20}
-                            height={20}
-                            className="h-5 w-5 rounded-full bg-slate-100"
-                          />
-                          {person.displayName}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-1 text-xs text-slate-400">ว่าง</p>
-                  )}
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {people.map((person) => (
+                      <span
+                        key={person.userId}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-2.5 text-xs font-medium text-slate-700"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={avatarUrl(person.userId, person.avatar)}
+                          alt=""
+                          width={20}
+                          height={20}
+                          className="h-5 w-5 rounded-full bg-slate-100"
+                        />
+                        {person.displayName}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               );
             })}
+            {emptyTotal > 0 ? (
+              <p className="pt-1 text-xs text-slate-400">ห้องอื่นว่างอยู่อีก {emptyTotal} ห้อง</p>
+            ) : null}
           </div>
         )}
       </div>
