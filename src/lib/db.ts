@@ -252,3 +252,47 @@ export async function getBotGuildIdsFromDb(): Promise<Set<string> | null> {
     return null;
   }
 }
+
+// ─────────────────────────── voice_snapshot (ห้องเสียงปัจจุบัน) ───────────────────────────
+
+export interface VoiceSnapshotChannel {
+  id: string;
+  name: string;
+  position: number;
+  userLimit: number | null;
+}
+
+export interface VoiceSnapshotOccupant {
+  userId: string;
+  displayName: string;
+  avatar: string | null;
+  channelId: string;
+}
+
+export interface VoiceSnapshot {
+  channels: VoiceSnapshotChannel[];
+  occupants: VoiceSnapshotOccupant[];
+  updatedAt: string | null;
+}
+
+/** Snapshot ห้องเสียงล่าสุดที่บอทซิงก์ไว้ (คืน null ถ้ายังไม่มี/อ่านไม่ได้) */
+export async function getVoiceSnapshot(guildId: string): Promise<VoiceSnapshot | null> {
+  const db = getPool();
+  if (!db) return null;
+  try {
+    const result = await db.query<{
+      data: { channels?: VoiceSnapshotChannel[]; occupants?: VoiceSnapshotOccupant[] } | null;
+      updated_at: Date | null;
+    }>("SELECT data, updated_at FROM voice_snapshot WHERE guild_id = $1", [guildId]);
+    if (!result.rows.length) return null;
+    const row = result.rows[0];
+    return {
+      channels: Array.isArray(row.data?.channels) ? row.data.channels : [],
+      occupants: Array.isArray(row.data?.occupants) ? row.data.occupants : [],
+      updatedAt: row.updated_at ? row.updated_at.toISOString() : null,
+    };
+  } catch (error) {
+    console.error("[web/db] อ่าน snapshot ห้องเสียงไม่สำเร็จ:", error);
+    return null;
+  }
+}

@@ -47,9 +47,9 @@ function htmlPage(options: {
   .card { width: 100%; max-width: 440px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 32px; }
   h1 { margin: 0 0 12px; font-size: 20px; font-weight: 600; }
   p { margin: 0; font-size: 14px; line-height: 1.7; color: #475569; }
-  .btn { display: inline-block; margin-top: 20px; background: #2563eb; color: #ffffff; text-decoration: none;
-         font-size: 14px; font-weight: 600; padding: 10px 18px; border-radius: 8px; }
-  .btn:hover { background: #1d4ed8; }
+  .btn { display: inline-block; margin-top: 20px; background: #1436ff; color: #ffffff; text-decoration: none;
+         font-size: 14px; font-weight: 600; padding: 10px 18px; border-radius: 999px; }
+  .btn:hover { background: #0d2bdb; }
   .muted { margin-top: 20px; font-size: 12px; color: #94a3b8; }
 </style>
 </head>

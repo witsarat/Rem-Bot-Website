@@ -10,6 +10,7 @@ import {
   getGuildSettings,
   getGuildStats,
   getVoiceLogs,
+  getVoiceSnapshot,
   getVoiceStatEvents,
   type VoiceEvent,
   type VoiceLogRow,
@@ -17,6 +18,7 @@ import {
 import { formatDateTimeTH, formatDurationTH, formatNumberTH } from "@/lib/format";
 import { computeVoiceLeaderboard } from "@/lib/voiceStats";
 import { SubmitButton } from "@/components/submit-button";
+import { VoiceLive } from "@/components/voice-live";
 import { saveSettings } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -151,11 +153,12 @@ export default async function GuildDetailPage(props: PageProps<"/dashboard/[guil
 
   const statsSince = period === "all" ? null : new Date(Date.now() - (period === "7" ? 7 : 30) * 24 * 60 * 60 * 1000);
 
-  const [settings, stats, channels, statEvents] = await Promise.all([
+  const [settings, stats, channels, statEvents, voiceSnapshot] = await Promise.all([
     getGuildSettings(guildId),
     getGuildStats(guildId),
     botIn ? fetchGuildTextChannels(guildId).catch(() => [] as DiscordChannel[]) : Promise.resolve([] as DiscordChannel[]),
     getVoiceStatEvents(guildId, statsSince),
+    getVoiceSnapshot(guildId),
   ]);
 
   const leaderboard = computeVoiceLeaderboard(statEvents).slice(0, 10);
@@ -273,6 +276,9 @@ export default async function GuildDetailPage(props: PageProps<"/dashboard/[guil
             </div>
           </form>
         )}
+
+        {/* ห้องเสียงตอนนี้ (ข้อมูลสดจากบอท) */}
+        {botIn ? <VoiceLive guildId={guildId} initial={voiceSnapshot} /> : null}
 
         {/* สถิติรวม */}
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
