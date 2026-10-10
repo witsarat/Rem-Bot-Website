@@ -207,3 +207,30 @@ export async function getVoiceStatEvents(guildId: string, since: Date | null): P
   );
   return result.rows;
 }
+
+// ─────────────────────────── สถิติรวมทั้งระบบ (ใช้ในหน้าแรก) ───────────────────────────
+
+export interface SiteStats {
+  total: number;
+  guilds: number;
+  users: number;
+}
+
+/** สถิติรวมทั้งระบบ — คืน null ถ้าฐานข้อมูลไม่พร้อม (หน้าเว็บจะแสดง "—") */
+export async function getSiteStats(): Promise<SiteStats | null> {
+  const db = getPool();
+  if (!db) return null;
+  try {
+    const result = await db.query<{ total: number; guilds: number; users: number }>(
+      `SELECT count(*)::int AS total,
+              count(DISTINCT guild_id)::int AS guilds,
+              count(DISTINCT user_id)::int AS users
+         FROM voice_logs`,
+    );
+    const row = result.rows[0];
+    return row ? { total: row.total, guilds: row.guilds, users: row.users } : null;
+  } catch (error) {
+    console.error("[web/db] อ่านสถิติรวมไม่สำเร็จ:", error);
+    return null;
+  }
+}

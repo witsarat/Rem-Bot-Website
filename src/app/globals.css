@@ -1,8 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Prompt", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans Thai",
+  --font-sans: "Anuphan", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans Thai",
     sans-serif;
+
+  /* ─── แบรนด์น้ำเงินสด (ทั้งเว็บใช้ผ่านคลาส blue-*) ─── */
+  --color-blue-50: #eef1ff;
+  --color-blue-100: #e0e5ff;
+  --color-blue-200: #c7d0ff;
+  --color-blue-300: #a3b0ff;
+  --color-blue-400: #7c8cff;
+  --color-blue-500: #4360ff;
+  --color-blue-600: #1436ff;
+  --color-blue-700: #0d2bdb;
+  --color-blue-800: #0f27b0;
+  --color-blue-900: #14238a;
+  --color-blue-950: #0b1660;
 }
 
 html {
@@ -11,41 +24,56 @@ html {
 
 body {
   background-color: #ffffff;
-  color: #0f172a;
+  color: #0a0a10;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  background: #dbeafe;
-  color: #1e3a8a;
+  background: #e0e5ff;
+  color: #14238a;
 }
 
-/* ─────────── ปุ่ม ─────────── */
+/* ─────────── ปุ่ม (ทรงแคปซูล) ─────────── */
 .btn-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600;
+  @apply inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600;
 }
 
 .btn-secondary {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600;
+  @apply inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-6 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600;
 }
 
 .btn-sm {
-  @apply px-3.5 py-1.5 text-sm;
+  @apply px-4 py-2 text-[13px];
 }
 
 /* ─────────── การ์ด / ฟอร์ม ─────────── */
 .card {
-  @apply rounded-xl border border-slate-200 bg-white;
+  @apply rounded-2xl border border-slate-200 bg-white;
 }
 
 .input {
-  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20;
+  @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20;
 }
 
 .label {
   @apply mb-1.5 block text-sm font-medium text-slate-700;
+}
+
+/* ─────────── ตัวอักษรประกอบดีไซน์ ─────────── */
+.eyebrow {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-blue-600);
+}
+
+.hl {
+  background: var(--color-blue-50);
+  border-radius: 10px;
+  padding: 0 10px;
 }
 
 /* ─────────── ลิงก์ในเนื้อหา ─────────── */

@@ -11,6 +11,10 @@ import {
   IconLayout,
   IconMic,
 } from "@/components/icons";
+import { getSiteStats } from "@/lib/db";
+import { formatNumberTH } from "@/lib/format";
+
+export const dynamic = "force-dynamic";
 
 const INVITE_URL =
   "https://discord.com/oauth2/authorize?client_id=1557023021825265775&permissions=8&integration_type=0&scope=bot+applications.commands";
@@ -21,7 +25,7 @@ const FEATURES = [
   {
     icon: IconMic,
     title: "บันทึกเข้า–ออก–ย้าย",
-    desc: "ทุกความเคลื่อนไหวในห้องเสียงถูกบันทึกทันที — ใคร เข้าห้องไหน เมื่อไร พร้อมชื่อห้องและจำนวนสมาชิกในห้อง",
+    desc: "ทุกความเคลื่อนไหวในห้องเสียงถูกบันทึกทันที — ใคร เข้าห้องไหน เมื่อไร พร้อมชื่อห้องและเวลา",
   },
   {
     icon: IconChartBar,
@@ -101,22 +105,34 @@ const FAQS = [
 ];
 
 const PREVIEW_ROWS = [
-  { dot: "bg-emerald-500", text: "@korn เข้าห้องเสียง #General", time: "15:02" },
-  { dot: "bg-amber-400", text: "@mint ย้ายห้อง #Lounge → #Gaming", time: "15:47" },
-  { dot: "bg-rose-500", text: "@korn ออกจากห้องเสียง #General", time: "16:10" },
+  { dot: "bg-emerald-500", text: "@SpecialXR เข้าห้องเสียง #General", time: "15:02" },
+  { dot: "bg-amber-400", text: "@zeenLZP ย้ายห้อง #Lounge → #Gaming", time: "15:47" },
+  { dot: "bg-rose-500", text: "@SpecialXR ออกจากห้องเสียง #General", time: "16:10" },
+];
+
+const LEADERBOARD_ROWS = [
+  { rank: "1", name: "zeenLZP", time: "13 ชม. 40 น." },
+  { rank: "2", name: "Ram", time: "5 ชม. 19 น." },
+  { rank: "3", name: "Dewwy", time: "4 ชม. 15 น." },
 ];
 
 function SectionHead({ kicker, title, desc }: { kicker: string; title: string; desc?: string }) {
   return (
     <div className="max-w-2xl">
-      <p className="text-xs font-semibold text-blue-600">{kicker}</p>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{title}</h2>
+      <p className="eyebrow">{kicker}</p>
+      <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{title}</h2>
       {desc ? <p className="mt-3 text-sm leading-6 text-slate-600">{desc}</p> : null}
     </div>
   );
 }
 
-export default function HomePage() {
+function Dot() {
+  return <span className="inline-block h-1 w-1 rounded-full bg-slate-300" />;
+}
+
+export default async function HomePage() {
+  const stats = await getSiteStats();
+
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* ───── Nav ───── */}
@@ -145,44 +161,39 @@ export default function HomePage() {
 
       <main>
         {/* ───── Hero ───── */}
-        <section className="mx-auto grid max-w-6xl gap-12 px-4 pb-20 pt-14 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:pt-20">
+        <section className="mx-auto grid max-w-6xl gap-14 px-4 pb-16 pt-14 sm:px-6 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:pb-20 lg:pt-20">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-              บอท Discord · ใช้ฟรีทุกเซิร์ฟเวอร์
-            </span>
-            <h1 className="mt-5 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-              บันทึกทุกความเคลื่อนไหว
-              <br className="hidden sm:block" /> ในห้องเสียงของคุณ
+            <p className="eyebrow">Voice Log Bot · Discord</p>
+            <h1 className="mt-4 text-4xl font-bold leading-[1.18] tracking-tight sm:text-5xl lg:text-[54px]">
+              บันทึก<span className="hl">ทุกเสียง</span>
+              <br />
+              ครบ<span className="hl">ทุกห้อง</span>
             </h1>
-            <p className="mt-4 max-w-xl text-base leading-7 text-slate-600">
-              Rem เก็บทุกการเข้า–ออก–ย้ายห้องเสียงของสมาชิกเป็น log อัตโนมัติ พร้อมจัดอันดับเวลาห้องเสียง
-              รายงานประจำสัปดาห์ และแดชบอร์ดสำหรับผู้ดูแล
+            <p className="mt-5 max-w-xl text-base leading-7 text-slate-600">
+              Rem เก็บทุกการเข้า–ออก–ย้ายห้องเสียงของสมาชิกเป็น log อัตโนมัติ พร้อมอันดับเวลาห้องเสียง
+              รายงานประจำสัปดาห์ และแดชบอร์ดสำหรับผู้ดูแล — ใช้ฟรีทุกเซิร์ฟเวอร์
             </p>
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-wrap gap-3">
               <a href={INVITE_URL} target="_blank" rel="noreferrer" className="btn-primary">
                 <IconDiscord className="h-4 w-4" />
                 เพิ่มบอทเข้าเซิร์ฟเวอร์
               </a>
               <Link href="/dashboard" className="btn-secondary">
-                เปิดแดชบอร์ด
+                เปิดแดชบอร์ด →
               </Link>
             </div>
-            <ul className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
-              <li className="flex items-center gap-1.5">
-                <IconCheck className="h-3.5 w-3.5 text-blue-600" /> ตั้งค่าเสร็จใน 1 นาที
-              </li>
-              <li className="flex items-center gap-1.5">
-                <IconCheck className="h-3.5 w-3.5 text-blue-600" /> ข้อมูลเก็บถาวรในฐานข้อมูล
-              </li>
-              <li className="flex items-center gap-1.5">
-                <IconCheck className="h-3.5 w-3.5 text-blue-600" /> ไม่ต้องเปิด Privileged Intents
-              </li>
-            </ul>
+            <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-[12.5px] text-slate-500">
+              <span>ฟรีทุกเซิร์ฟเวอร์</span>
+              <Dot />
+              <span>ตั้งค่าใน 1 นาที</span>
+              <Dot />
+              <span>ข้อมูลเก็บถาวรในฐานข้อมูล</span>
+            </div>
           </div>
 
-          {/* ตัวอย่างหน้าจอ log */}
-          <div className="card p-1.5">
-            <div className="overflow-hidden rounded-lg border border-slate-200">
+          {/* คอลลาจการ์ดตัวอย่าง */}
+          <div className="relative">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_-36px_rgba(10,10,16,0.35)]">
               <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
                 <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
@@ -200,28 +211,78 @@ export default function HomePage() {
                 ))}
               </div>
               <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500">
-                <span>ประวัติเดียวกันนี้ดูย้อนหลังได้ในแดชบอร์ด</span>
+                <span>ดูย้อนหลังทั้งหมดได้ในแดชบอร์ด</span>
                 <Link href="/dashboard" className="font-medium text-blue-600 hover:text-blue-700">
                   เปิดแดชบอร์ด →
                 </Link>
               </div>
             </div>
+
+            <div className="relative z-10 -mt-5 ml-10 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_18px_50px_-28px_rgba(10,10,16,0.35)]">
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                อันดับเวลาห้องเสียง · ตัวอย่าง
+              </p>
+              <div className="mt-2 space-y-1">
+                {LEADERBOARD_ROWS.map((row, index) => (
+                  <div
+                    key={row.rank}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm ${index === 0 ? "bg-blue-50" : ""}`}
+                  >
+                    <span
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold ${
+                        index === 0 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {row.rank}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">{row.name}</span>
+                    <span className="shrink-0 text-xs tabular-nums text-slate-500">{row.time}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ───── สถิติจริง ───── */}
+        <section className="border-y border-slate-200">
+          <div className="mx-auto grid max-w-6xl px-4 sm:grid-cols-3 sm:px-6">
+            {[
+              { n: stats ? `${formatNumberTH(stats.total)}+` : "—", l: "รายการบันทึกแล้ว" },
+              { n: stats ? formatNumberTH(stats.guilds) : "—", l: "เซิร์ฟเวอร์ที่ใช้งาน" },
+              { n: stats ? formatNumberTH(stats.users) : "—", l: "สมาชิกที่มีข้อมูล" },
+            ].map((item, index) => (
+              <div
+                key={item.l}
+                className={`border-b border-slate-200 py-6 last:border-b-0 sm:border-b-0 ${
+                  index > 0 ? "sm:border-l sm:border-slate-200 sm:pl-8" : ""
+                }`}
+              >
+                <p className="text-3xl font-bold tabular-nums text-slate-900">{item.n}</p>
+                <p className="mt-1 text-[12.5px] text-slate-500">{item.l}</p>
+              </div>
+            ))}
           </div>
         </section>
 
         {/* ───── Features ───── */}
-        <section id="features" className="scroll-mt-20 border-t border-slate-200">
+        <section id="features" className="scroll-mt-20">
           <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
             <SectionHead
-              kicker="ฟีเจอร์"
-              title="ครบทุกอย่างที่เซิร์ฟเวอร์ต้องการ"
-              desc="พร้อมใช้งานทันทีหลังเชิญ — ไม่ต้องเขียนโค้ดหรือตั้งค่าเพิ่ม"
+              kicker="Features"
+              title="ทำอะไรได้บ้าง"
+              desc="ครบทุกอย่างที่เซิร์ฟเวอร์ต้องการ — พร้อมใช้งานทันทีหลังเชิญ ไม่ต้องเขียนโค้ดหรือตั้งค่าเพิ่ม"
             />
             <div className="mt-11 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {FEATURES.map((feature) => (
-                <div key={feature.title} className="card p-6">
-                  <feature.icon className="h-5 w-5 text-blue-600" />
-                  <h3 className="mt-4 text-base font-semibold text-slate-900">{feature.title}</h3>
+                <div
+                  key={feature.title}
+                  className="rounded-2xl border border-slate-200 p-6 transition-colors hover:border-blue-300"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                    <feature.icon className="h-5 w-5" />
+                  </span>
+                  <h3 className="mt-4 text-base font-bold text-slate-900">{feature.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{feature.desc}</p>
                 </div>
               ))}
@@ -233,17 +294,17 @@ export default function HomePage() {
         <section id="commands" className="scroll-mt-20 border-y border-slate-200 bg-slate-50">
           <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
             <SectionHead
-              kicker="คำสั่งในดิสคอร์ด"
+              kicker="Commands"
               title="คำสั่งทั้งหมดของ Rem"
               desc="ติดตั้งอัตโนมัติให้ทุกเซิร์ฟเวอร์ที่บอทอยู่ — ขึ้นทันทีหลังเชิญ"
             />
-            <div className="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="mt-10 overflow-hidden rounded-2xl border border-slate-200 bg-white">
               {COMMANDS.map((command, index) => (
                 <div
                   key={command.cmd}
                   className={`flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-4 ${index !== 0 ? "border-t border-slate-100" : ""}`}
                 >
-                  <code className="w-24 shrink-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-center text-sm font-medium text-blue-700">
+                  <code className="w-24 shrink-0 rounded-lg border border-blue-100 bg-blue-50 px-2 py-1 text-center text-[13px] font-bold text-blue-700">
                     {command.cmd}
                   </code>
                   <p className="min-w-0 flex-1 text-sm text-slate-600">{command.desc}</p>
@@ -267,7 +328,7 @@ export default function HomePage() {
           <div className="mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center">
             <div>
               <SectionHead
-                kicker="แดชบอร์ด"
+                kicker="Dashboard"
                 title="จัดการทุกอย่างได้เอง ไม่ต้องง้อคำสั่ง"
                 desc="เข้าสู่ระบบด้วย Discord แล้วดูแลเซิร์ฟเวอร์ของคุณได้จากเบราว์เซอร์ — เห็นเฉพาะเซิร์ฟเวอร์ที่คุณเป็นผู้ดูแลเท่านั้น"
               />
@@ -275,7 +336,7 @@ export default function HomePage() {
                 {[
                   "เลือกห้องบันทึก voice log และห้องรับรายงานของแต่ละเซิร์ฟเวอร์",
                   "ดูประวัติการเข้า–ออก–ย้ายย้อนหลังทั้งหมด พร้อมกรองตามประเภท",
-                  "ดูสถิติรวม — จำนวนเหตุการณ์ สมาชิก และความเคลื่อนไหวล่าสุด",
+                  "ดูอันดับเวลาห้องเสียงและสถิติรวมของเซิร์ฟเวอร์",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
                     <IconCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
@@ -289,35 +350,33 @@ export default function HomePage() {
               </Link>
             </div>
 
-            <div className="card p-1.5">
-              <div className="overflow-hidden rounded-lg border border-slate-200">
-                <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2.5">
-                  <span className="text-xs font-medium text-slate-500">เซิร์ฟเวอร์ของคุณ</span>
-                  <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-700">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> บอทออนไลน์
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_-40px_rgba(10,10,16,0.3)]">
+              <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+                <span className="text-xs font-medium text-slate-500">เซิร์ฟเวอร์ของคุณ</span>
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> บอทออนไลน์
+                </span>
+              </div>
+              <div className="divide-y divide-slate-100">
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-700">
+                    SV
                   </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-slate-800">เซิร์ฟเวอร์ของฉัน</span>
+                    <span className="text-[11px] text-emerald-700">บอทพร้อมใช้งาน</span>
+                  </span>
+                  <span className="text-slate-300">→</span>
                 </div>
-                <div className="divide-y divide-slate-100">
-                  <div className="flex items-center gap-3 px-4 py-3.5">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-700">
-                      SV
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-slate-800">เซิร์ฟเวอร์ของฉัน</span>
-                      <span className="text-[11px] text-emerald-700">บอทพร้อมใช้งาน</span>
-                    </span>
-                    <span className="text-slate-300">→</span>
-                  </div>
-                  <div className="flex items-center gap-3 px-4 py-3.5">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">
-                      SV
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-slate-800">เซิร์ฟเวอร์เพื่อน</span>
-                      <span className="text-[11px] text-amber-700">ยังไม่ได้เพิ่มบอท</span>
-                    </span>
-                    <span className="text-slate-300">→</span>
-                  </div>
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">
+                    SV
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-slate-800">เซิร์ฟเวอร์เพื่อน</span>
+                    <span className="text-[11px] text-amber-700">ยังไม่ได้เพิ่มบอท</span>
+                  </span>
+                  <span className="text-slate-300">→</span>
                 </div>
               </div>
             </div>
@@ -328,22 +387,20 @@ export default function HomePage() {
         <section id="howto" className="scroll-mt-20 border-y border-slate-200 bg-slate-50">
           <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
             <SectionHead
-              kicker="เริ่มใช้ใน 3 ขั้นตอน"
-              title="พร้อมใช้งานในไม่ถึงหนึ่งนาที"
+              kicker="How it works"
+              title="เริ่มใช้ใน 3 ขั้นตอน"
               desc="ไม่ต้องมีความรู้เทคนิค — เชิญบอทแล้วใช้เซิร์ฟเวอร์ตามปกติได้เลย"
             />
             <div className="mt-11 grid gap-5 md:grid-cols-3">
               {STEPS.map((step, index) => (
-                <div key={step.title} className="card p-6">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700">
-                    {index + 1}
-                  </span>
-                  <h3 className="mt-4 text-base font-semibold text-slate-900">{step.title}</h3>
+                <div key={step.title} className="rounded-2xl border border-slate-200 bg-white p-6">
+                  <span className="text-4xl font-bold tabular-nums text-blue-600">0{index + 1}</span>
+                  <h3 className="mt-3 text-base font-bold text-slate-900">{step.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{step.desc}</p>
                 </div>
               ))}
             </div>
-            <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-2 rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600">
+            <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600">
               <span className="font-medium text-slate-800">สีของ log:</span>
               <span className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> เขียว = เข้าห้อง
@@ -361,10 +418,10 @@ export default function HomePage() {
         {/* ───── FAQ ───── */}
         <section id="faq" className="scroll-mt-20">
           <div className="mx-auto max-w-3xl px-4 py-20 sm:px-6">
-            <SectionHead kicker="คำถามที่พบบ่อย" title="เรื่องที่คนถามบ่อย" />
+            <SectionHead kicker="FAQ" title="เรื่องที่คนถามบ่อย" />
             <div className="mt-10 space-y-3">
               {FAQS.map((faq) => (
-                <details key={faq.q} className="card group overflow-hidden">
+                <details key={faq.q} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-medium text-slate-800 [&::-webkit-details-marker]:hidden">
                     {faq.q}
                     <span className="shrink-0 text-lg leading-none text-slate-400 transition-transform group-open:rotate-45">
@@ -380,14 +437,15 @@ export default function HomePage() {
 
         {/* ───── CTA ───── */}
         <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
-          <div className="rounded-xl border border-blue-100 bg-blue-50 px-6 py-12 text-center sm:px-12">
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-              พร้อมเริ่มเก็บ log แล้วหรือยัง?
+          <div className="rounded-3xl border border-blue-100 bg-blue-50/70 px-6 py-14 text-center sm:px-12">
+            <p className="eyebrow">Get started</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              พร้อมให้ทุกห้องเสียงมีบันทึกหรือยัง?
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">
               เชิญบอท แล้วให้ผู้ดูแลพิมพ์ /setup ในเซิร์ฟเวอร์ของคุณ — ใช้เวลาไม่ถึงหนึ่งนาที
             </p>
-            <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
               <a href={INVITE_URL} target="_blank" rel="noreferrer" className="btn-primary">
                 <IconDiscord className="h-4 w-4" />
                 เพิ่มบอทเข้าเซิร์ฟเวอร์
