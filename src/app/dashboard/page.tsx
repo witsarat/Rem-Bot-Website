@@ -19,6 +19,16 @@ export const metadata: Metadata = {
 const INVITE_URL =
   "https://discord.com/oauth2/authorize?client_id=1557023021825265775&permissions=8&integration_type=0&scope=bot+applications.commands";
 
+/** คำอธิบายสาเหตุที่ login ไม่สำเร็จ (ส่งมาจาก /api/auth/callback) */
+const LOGIN_FAIL_HINTS: Record<string, string> = {
+  "state-missing": "Discord ไม่ได้ส่งข้อมูลกลับมาครบ — ลองเข้าสู่ระบบใหม่อีกครั้ง",
+  "state-cookie": "เบราว์เซอร์ไม่ได้เก็บคุกกี้ที่ใช้ยืนยันการเข้าสู่ระบบ — อนุญาตคุกกี้/ปิดโหมดไม่ระบุตัวตน แล้วลองใหม่",
+  "state-mismatch": "หน้ายืนยันหมดอายุหรือมีการกด login ซ้ำหลายแท็บ — กลับไปเริ่มใหม่จากปุ่มด้านล่าง",
+  config: "เซิร์ฟเวอร์ยังไม่ได้ตั้งค่า SESSION_SECRET",
+  token: "แลก token กับ Discord ไม่สำเร็จ (ตรวจ DISCORD_CLIENT_SECRET และ Redirect URL ใน Developer Portal)",
+  me: "ดึงข้อมูลผู้ใช้จาก Discord ไม่สำเร็จ — ลองใหม่อีกครั้ง",
+};
+
 function Badge({ tone, children }: { tone: "green" | "amber" | "slate"; children: ReactNode }) {
   const styles = {
     green: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -35,6 +45,7 @@ function Badge({ tone, children }: { tone: "green" | "amber" | "slate"; children
 export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const searchParams = await props.searchParams;
   const loginState = Array.isArray(searchParams.login) ? searchParams.login[0] : searchParams.login;
+  const loginReason = Array.isArray(searchParams.reason) ? searchParams.reason[0] : searchParams.reason;
 
   const result = await loadAdminGuilds();
 
@@ -52,7 +63,9 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
           </div>
         ) : loginState === "failed" ? (
           <div className="mx-auto mt-8 max-w-md px-4">
-            <Note tone="rose">เข้าสู่ระบบไม่สำเร็จ — กรุณาลองใหม่อีกครั้ง</Note>
+            <Note tone="rose">
+              เข้าสู่ระบบไม่สำเร็จ — {LOGIN_FAIL_HINTS[loginReason ?? ""] ?? "กรุณาลองใหม่อีกครั้ง"}
+            </Note>
           </div>
         ) : null}
         <LoginPrompt
