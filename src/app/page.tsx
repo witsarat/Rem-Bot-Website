@@ -13,6 +13,7 @@ import {
 } from "@/components/icons";
 import { getSiteStats } from "@/lib/db";
 import { formatNumberTH } from "@/lib/format";
+import { FREE_HISTORY_DAYS, PREMIUM_PRICE_THB } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +85,7 @@ const FAQS = [
   },
   {
     q: "ใช้ฟรีไหม จำกัดจำนวนเซิร์ฟเวอร์หรือเปล่า?",
-    a: "ใช้ฟรีและไม่จำกัดจำนวนเซิร์ฟเวอร์ — เป็นโปรเจกต์โอเพนซอร์ส โค้ดทั้งหมดดูได้บน GitHub",
+    a: `ฟีเจอร์หลักใช้ฟรีและไม่จำกัดจำนวนเซิร์ฟเวอร์ — เป็นโปรเจกต์โอเพนซอร์ส โค้ดทั้งหมดดูได้บน GitHub ส่วนฟีเจอร์เชิงลึก (อันดับตลอดกาล, การ์ดสมาชิกเต็มรูปแบบ, ประวัติเกิน ${FREE_HISTORY_DAYS} วัน, ส่งออก CSV และรายงานอัตโนมัติ) อยู่ในแพ็กเกจ Premium ${PREMIUM_PRICE_THB} บาท/เดือน ต่อเซิร์ฟเวอร์ — ดูรายละเอียดได้ที่หน้าแพ็กเกจ`,
   },
   {
     q: "ทำไมบางคนมองไม่เห็นคำสั่ง?",
@@ -145,6 +146,7 @@ export default async function HomePage() {
             <a href="#features" className="transition-colors hover:text-slate-900">ฟีเจอร์</a>
             <a href="#commands" className="transition-colors hover:text-slate-900">คำสั่ง</a>
             <a href="#dashboard" className="transition-colors hover:text-slate-900">แดชบอร์ด</a>
+            <a href="#pricing" className="transition-colors hover:text-slate-900">ราคา</a>
             <a href="#howto" className="transition-colors hover:text-slate-900">วิธีใช้งาน</a>
             <a href="#faq" className="transition-colors hover:text-slate-900">คำถามที่พบบ่อย</a>
           </div>
@@ -171,7 +173,7 @@ export default async function HomePage() {
             </h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-slate-600">
               Rem เก็บทุกการเข้า–ออก–ย้ายห้องเสียงของสมาชิกเป็น log อัตโนมัติ พร้อมอันดับเวลาห้องเสียง
-              รายงานประจำสัปดาห์ และแดชบอร์ดสำหรับผู้ดูแล — ใช้ฟรีทุกเซิร์ฟเวอร์
+              รายงานประจำสัปดาห์ และแดชบอร์ดสำหรับผู้ดูแล — เริ่มใช้ฟรีทุกเซิร์ฟเวอร์
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href={INVITE_URL} target="_blank" rel="noreferrer" className="btn-primary">
@@ -183,7 +185,9 @@ export default async function HomePage() {
               </Link>
             </div>
             <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-[12.5px] text-slate-500">
-              <span>ฟรีทุกเซิร์ฟเวอร์</span>
+              <span>เริ่มใช้ฟรีทุกเซิร์ฟเวอร์</span>
+              <Dot />
+              <span>Premium 29 บาท/เดือน</span>
               <Dot />
               <span>ตั้งค่าใน 1 นาที</span>
               <Dot />
@@ -319,6 +323,77 @@ export default async function HomePage() {
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ───── Pricing ───── */}
+        <section id="pricing" className="scroll-mt-20 border-b border-slate-200">
+          <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+            <SectionHead
+              kicker="Pricing"
+              title="เริ่มฟรี — อัปเกรดเมื่ออยากได้ข้อมูลลึกขึ้น"
+              desc={`ฟีเจอร์หลักใช้ฟรีทุกเซิร์ฟเวอร์ ส่วนแพ็กเกจ Premium ${PREMIUM_PRICE_THB} บาท/เดือน ต่อเซิร์ฟเวอร์ เพิ่มอันดับตลอดกาล ประวัติทั้งหมด รายงานอัตโนมัติ และส่งออก CSV`}
+            />
+
+            <div className="mt-11 grid gap-5 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 p-6">
+                <div className="flex items-baseline justify-between">
+                  <h3 className="text-base font-bold text-slate-900">ฟรี</h3>
+                  <p className="text-2xl font-bold text-slate-900">
+                    0 <span className="text-sm font-medium text-slate-500">บาท</span>
+                  </p>
+                </div>
+                <p className="mt-1 text-xs text-slate-400">ทุกเซิร์ฟเวอร์ ไม่จำกัดจำนวน</p>
+                <ul className="mt-5 space-y-2.5 text-sm text-slate-600">
+                  {[
+                    "บันทึกเข้า–ออก–ย้ายห้องเสียงไม่จำกัด",
+                    "/top 7 วัน และ 30 วัน",
+                    "/profile สถิติ 7 / 30 วัน",
+                    `/ประวัติในแดชบอร์ด ${FREE_HISTORY_DAYS} วันล่าสุด`,
+                    "/weekly ส่งทดสอบเองได้",
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-2.5">
+                      <IconCheck className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="relative rounded-2xl border-2 border-blue-600 bg-blue-50/40 p-6">
+                <span className="absolute right-5 top-5 rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-semibold text-white">
+                  แนะนำ
+                </span>
+                <div className="flex items-baseline justify-between pr-16">
+                  <h3 className="text-base font-bold text-blue-700">Premium</h3>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {PREMIUM_PRICE_THB} <span className="text-sm font-medium text-slate-500">บาท/เดือน</span>
+                  </p>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">ต่อเซิร์ฟเวอร์ • ยกเลิกได้ทุกเมื่อ</p>
+                <ul className="mt-5 space-y-2.5 text-sm text-slate-700">
+                  {[
+                    "ทุกอย่างในแพ็กเกจฟรี",
+                    "/top อันดับตลอดกาล",
+                    "/profile เวลาตลอดกาล + อันดับ + ห้องยอดนิยม",
+                    "รายงานประจำสัปดาห์ส่งอัตโนมัติทุกจันทร์ 09:00",
+                    "ประวัติทั้งหมดในแดชบอร์ด + ส่งออก CSV",
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-2.5">
+                      <IconCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center gap-4">
+              <Link href="/premium" className="btn-secondary">
+                ดูรายละเอียดแพ็กเกจ →
+              </Link>
+              <p className="text-xs text-slate-400">ยังไม่เปิดชำระเงินออนไลน์ — ติดต่อเจ้าของบอทเพื่อเปิดใช้</p>
             </div>
           </div>
         </section>
@@ -470,6 +545,7 @@ export default async function HomePage() {
             <ul className="mt-3 space-y-2 text-sm text-slate-500">
               <li><a href="#features" className="hover:text-slate-800">ฟีเจอร์</a></li>
               <li><a href="#commands" className="hover:text-slate-800">คำสั่ง</a></li>
+              <li><a href="#pricing" className="hover:text-slate-800">ราคา</a></li>
               <li><a href="#howto" className="hover:text-slate-800">วิธีใช้งาน</a></li>
               <li><a href="#faq" className="hover:text-slate-800">คำถามที่พบบ่อย</a></li>
             </ul>
@@ -478,6 +554,7 @@ export default async function HomePage() {
             <p className="text-sm font-semibold text-slate-800">ลิงก์</p>
             <ul className="mt-3 space-y-2 text-sm text-slate-500">
               <li><Link href="/dashboard" className="hover:text-slate-800">แดชบอร์ด</Link></li>
+              <li><Link href="/premium" className="hover:text-slate-800">แพ็กเกจ Premium</Link></li>
               <li><a href={INVITE_URL} target="_blank" rel="noreferrer" className="hover:text-slate-800">เพิ่มบอท</a></li>
               <li><a href={GITHUB_URL} target="_blank" rel="noreferrer" className="hover:text-slate-800">GitHub</a></li>
             </ul>

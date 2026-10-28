@@ -10,9 +10,11 @@ function getPool(): Pool | null {
   const url = (process.env.DATABASE_URL ?? "").trim();
   if (!url) return null;
   if (!pool) {
+    // PGSSLMODE=disable → PostgreSQL ในเครื่อง/เทสต์ (ปกติ Supabase/Neon ต้องใช้ SSL)
+    const sslDisabled = /^(disable|false|0)$/i.test((process.env.PGSSLMODE ?? "").trim());
     pool = new Pool({
       connectionString: url,
-      ssl: { rejectUnauthorized: false },
+      ssl: sslDisabled ? undefined : { rejectUnauthorized: false },
       max: 3,
       connectionTimeoutMillis: 8_000,
       idleTimeoutMillis: 30_000,
@@ -90,60 +92,108 @@ export interface VoiceLogsPage {
   total: number;
 }
 
+export interface VoiceLogsQuery {
+  page: number;
+  perPage: number;
+  event?: VoiceEvent | null;
+  /** แสดงเฉพาะรายการตั้งแต่วันที่นี้เป็นต้นมา (ไม่ใส่/null = ทั้งหมด) — ใช้จำกัดประวัติของแพ็กเกจฟรี */
+  since?: Date | null;
+}
+
+interface VoiceLogRawRow {
+  id: string;
+  user_id: string;
+  username: string;
+  event: VoiceEvent;
+  channel_name: string | null;
+  from_channel_name: string | null;
+  to_channel_name: string | null;
+  created_at: Date;
+}
+
+function mapVoiceLogRow(row: VoiceLogRawRow): VoiceLogRow {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    username: row.username,
+    event: row.event,
+    channelName: row.channel_name,
+    fromChannelName: row.from_channel_name,
+    toChannelName: row.to_channel_name,
+    createdAt: row.created_at.toISOString(),
+  };
+}
+
+/** สร้างเงื่อนไข WHERE ร่วมของประวัติ (เซิร์ฟเวอร์ + ประเภทเหตุการณ์ + ช่วงเวลา) */
+function voiceLogFilters(guildId: string, event: VoiceEvent | null, since: Date | null) {
+  const params: Array<string | Date> = [guildId];
+  const where = ["guild_id = $1"];
+  if (event) {
+    params.push(event);
+    where.push(`event = $${params.length}`);
+  }
+  if (since) {
+    params.push(since);
+    where.push(`created_at >= $${params.length}`);
+  }
+  return { params, whereSql: where.join(" AND ") };
+}
+
 /** อ่านประวัติ voice log แบบแบ่งหน้า (ใหม่สุดก่อน) */
-export async function getVoiceLogs(
-  guildId: string,
-  options: { page: number; perPage: number; event?: VoiceEvent | null },
-): Promise<VoiceLogsPage> {
+export async function getVoiceLogs(guildId: string, options: VoiceLogsQuery): Promise<VoiceLogsPage> {
   const db = getPool();
   if (!db) return { rows: [], total: 0 };
 
-  const { page, perPage, event } = options;
+  const { page, perPage, event = null, since = null } = options;
   const offset = (page - 1) * perPage;
+  const { params, whereSql } = voiceLogFilters(guildId, event, since);
+  const listParams: Array<string | number | Date> = [...params, perPage, offset];
 
-  const filter = event ? "AND event = $2" : "";
-  const countParams: string[] = event ? [guildId, event] : [guildId];
-  const listParams: Array<string | number> = event ? [guildId, event] : [guildId];
-  listParams.push(perPage, offset);
-
-  const countQuery = `SELECT count(*)::int AS total FROM voice_logs WHERE guild_id = $1 ${filter}`;
+  const countQuery = `SELECT count(*)::int AS total FROM voice_logs WHERE ${whereSql}`;
   const listQuery = `
     SELECT id::text AS id, user_id, username, event,
            channel_name, from_channel_name, to_channel_name,
            created_at
       FROM voice_logs
-     WHERE guild_id = $1 ${filter}
+     WHERE ${whereSql}
      ORDER BY created_at DESC, id DESC
      LIMIT $${listParams.length - 1} OFFSET $${listParams.length}
   `;
 
   const [countResult, listResult] = await Promise.all([
-    db.query<{ total: number }>(countQuery, countParams),
-    db.query<{
-      id: string;
-      user_id: string;
-      username: string;
-      event: VoiceEvent;
-      channel_name: string | null;
-      from_channel_name: string | null;
-      to_channel_name: string | null;
-      created_at: Date;
-    }>(listQuery, listParams),
+    db.query<{ total: number }>(countQuery, params),
+    db.query<VoiceLogRawRow>(listQuery, listParams),
   ]);
 
   return {
     total: countResult.rows[0]?.total ?? 0,
-    rows: listResult.rows.map((row) => ({
-      id: row.id,
-      userId: row.user_id,
-      username: row.username,
-      event: row.event,
-      channelName: row.channel_name,
-      fromChannelName: row.from_channel_name,
-      toChannelName: row.to_channel_name,
-      createdAt: row.created_at.toISOString(),
-    })),
+    rows: listResult.rows.map(mapVoiceLogRow),
   };
+}
+
+/** อ่านประวัติทั้งหมด (ไม่มีแบ่งหน้า) สำหรับส่งออก CSV — จำกัด 50,000 แถวล่าสุด */
+export async function getVoiceLogsForExport(
+  guildId: string,
+  options: { event?: VoiceEvent | null; since?: Date | null } = {},
+): Promise<VoiceLogRow[]> {
+  const db = getPool();
+  if (!db) return [];
+
+  const { event = null, since = null } = options;
+  const { params, whereSql } = voiceLogFilters(guildId, event, since);
+
+  const result = await db.query<VoiceLogRawRow>(
+    `SELECT id::text AS id, user_id, username, event,
+            channel_name, from_channel_name, to_channel_name,
+            created_at
+       FROM voice_logs
+      WHERE ${whereSql}
+      ORDER BY created_at DESC, id DESC
+      LIMIT 50000`,
+    params,
+  );
+
+  return result.rows.map(mapVoiceLogRow);
 }
 
 export interface GuildStats {
@@ -295,4 +345,83 @@ export async function getVoiceSnapshot(guildId: string): Promise<VoiceSnapshot |
     console.error("[web/db] อ่าน snapshot ห้องเสียงไม่สำเร็จ:", error);
     return null;
   }
+}
+
+// ─────────────────────────── guild_subscriptions (Premium 29 บาท/เดือน) ───────────────────────────
+
+export type SubscriptionStatus = "active" | "revoked";
+
+export interface GuildSubscription {
+  guildId: string;
+  plan: string;
+  status: SubscriptionStatus;
+  priceThb: number;
+  startedAt: string;
+  currentPeriodEnd: string | null;
+  grantedBy: string | null;
+  note: string | null;
+}
+
+interface SubscriptionRawRow {
+  guild_id: string;
+  plan: string;
+  status: SubscriptionStatus;
+  price_thb: number;
+  started_at: Date;
+  current_period_end: Date | null;
+  granted_by: string | null;
+  note: string | null;
+}
+
+function mapSubscription(row: SubscriptionRawRow): GuildSubscription {
+  return {
+    guildId: row.guild_id,
+    plan: row.plan,
+    status: row.status,
+    priceThb: row.price_thb,
+    startedAt: row.started_at.toISOString(),
+    currentPeriodEnd: row.current_period_end ? row.current_period_end.toISOString() : null,
+    grantedBy: row.granted_by,
+    note: row.note,
+  };
+}
+
+/** อ่านสถานะ Premium ของเซิร์ฟเวอร์ (null = ยังไม่เคยสมัคร / ยังไม่มีตาราง) */
+export async function getGuildSubscription(guildId: string): Promise<GuildSubscription | null> {
+  const db = getPool();
+  if (!db) return null;
+
+  try {
+    const result = await db.query<SubscriptionRawRow>(
+      `SELECT guild_id, plan, status, price_thb, started_at, current_period_end, granted_by, note
+         FROM guild_subscriptions
+        WHERE guild_id = $1`,
+      [guildId],
+    );
+    return result.rows.length ? mapSubscription(result.rows[0]) : null;
+  } catch (error) {
+    // ตารางอาจยังไม่ถูกสร้าง (บอทยังไม่บูตหลังอัปเดต) — ถือว่าฟรี ไม่ทำให้หน้าเว็บพัง
+    console.error("[web/db] อ่านสถานะ Premium ไม่สำเร็จ:", error);
+    return null;
+  }
+}
+
+/** อ่านสถานะ Premium ของหลายเซิร์ฟเวอร์พร้อมกัน (ใช้แสดงป้ายในหน้าแดชบอร์ดรวม) */
+export async function getGuildSubscriptions(guildIds: string[]): Promise<Map<string, GuildSubscription>> {
+  const map = new Map<string, GuildSubscription>();
+  const db = getPool();
+  if (!db || guildIds.length === 0) return map;
+
+  try {
+    const result = await db.query<SubscriptionRawRow>(
+      `SELECT guild_id, plan, status, price_thb, started_at, current_period_end, granted_by, note
+         FROM guild_subscriptions
+        WHERE guild_id = ANY($1::text[])`,
+      [guildIds],
+    );
+    for (const row of result.rows) map.set(row.guild_id, mapSubscription(row));
+  } catch (error) {
+    console.error("[web/db] อ่านสถานะ Premium หลายเซิร์ฟเวอร์ไม่สำเร็จ:", error);
+  }
+  return map;
 }

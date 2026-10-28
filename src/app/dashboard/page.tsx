@@ -9,6 +9,8 @@ import { Note } from "@/components/note";
 import { IconDiscord } from "@/components/icons";
 import { loadAdminGuilds } from "@/lib/auth";
 import { guildIconUrl } from "@/lib/discord";
+import { getGuildSubscriptions } from "@/lib/db";
+import { toPremiumStatus } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -29,11 +31,12 @@ const LOGIN_FAIL_HINTS: Record<string, string> = {
   me: "ดึงข้อมูลผู้ใช้จาก Discord ไม่สำเร็จ — ลองใหม่อีกครั้ง",
 };
 
-function Badge({ tone, children }: { tone: "green" | "amber" | "slate"; children: ReactNode }) {
+function Badge({ tone, children }: { tone: "green" | "amber" | "slate" | "blue"; children: ReactNode }) {
   const styles = {
     green: "border-emerald-200 bg-emerald-50 text-emerald-700",
     amber: "border-amber-200 bg-amber-50 text-amber-700",
     slate: "border-slate-200 bg-slate-50 text-slate-600",
+    blue: "border-blue-200 bg-blue-50 text-blue-700",
   } as const;
   return (
     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${styles[tone]}`}>
@@ -78,6 +81,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const { session, adminGuilds, botGuildIds } = result.data;
   const botServers = adminGuilds.filter((guild) => botGuildIds.has(guild.id));
   const hiddenCount = adminGuilds.length - botServers.length;
+  const subscriptions = await getGuildSubscriptions(botServers.map((guild) => guild.id));
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -113,6 +117,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
           <ul className="mt-8 grid gap-4 sm:grid-cols-2">
             {botServers.map((guild) => {
               const icon = guildIconUrl(guild, 64);
+              const premium = toPremiumStatus(subscriptions.get(guild.id) ?? null);
               return (
                 <li key={guild.id}>
                   <Link
@@ -138,6 +143,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
                       <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {guild.owner ? <Badge tone="slate">เจ้าของ</Badge> : null}
                         <Badge tone="green">บอทอยู่ในเซิร์ฟเวอร์</Badge>
+                        {premium.active ? <Badge tone="blue">⭐ Premium</Badge> : <Badge tone="slate">ฟรี</Badge>}
                       </span>
                     </span>
                     <span className="btn-primary btn-sm shrink-0">จัดการ</span>

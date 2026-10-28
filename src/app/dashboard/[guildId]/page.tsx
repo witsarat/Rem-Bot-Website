@@ -9,6 +9,7 @@ import { fetchGuildTextChannels, guildIconUrl, type DiscordChannel } from "@/lib
 import {
   getGuildSettings,
   getGuildStats,
+  getGuildSubscription,
   getVoiceLogs,
   getVoiceSnapshot,
   getVoiceStatEvents,
@@ -16,6 +17,7 @@ import {
   type VoiceLogRow,
 } from "@/lib/db";
 import { formatDateTimeTH, formatDurationTH, formatNumberTH } from "@/lib/format";
+import { FREE_HISTORY_DAYS, formatPremiumDate, historyCutoff, PREMIUM_PRICE_THB, toPremiumStatus } from "@/lib/premium";
 import { computeVoiceLeaderboard } from "@/lib/voiceStats";
 import { SubmitButton } from "@/components/submit-button";
 import { VoiceLive } from "@/components/voice-live";
@@ -147,26 +149,35 @@ export default async function GuildDetailPage(props: PageProps<"/dashboard/[guil
 
   const page = parsePage(searchParams.page);
   const eventFilter = parseEventFilter(searchParams.type);
-  const period = parsePeriod(searchParams.period);
+  const requestedPeriod = parsePeriod(searchParams.period);
   const saved = one(searchParams.saved) === "1";
   const errorCode = one(searchParams.error);
 
-  const statsSince = period === "all" ? null : new Date(Date.now() - (period === "7" ? 7 : 30) * 24 * 60 * 60 * 1000);
-
-  const [settings, stats, channels, statEvents, voiceSnapshot] = await Promise.all([
+  const [settings, stats, channels, voiceSnapshot, subscription] = await Promise.all([
     getGuildSettings(guildId),
     getGuildStats(guildId),
     botIn ? fetchGuildTextChannels(guildId).catch(() => [] as DiscordChannel[]) : Promise.resolve([] as DiscordChannel[]),
-    getVoiceStatEvents(guildId, statsSince),
     getVoiceSnapshot(guildId),
+    getGuildSubscription(guildId),
   ]);
 
+  const premium = toPremiumStatus(subscription);
+  /** แพ็กเกจฟรี: ประวัติย้อนหลังได้ 30 วัน (Premium = ทั้งหมด) */
+  const cutoff = historyCutoff(premium);
+  /** แพ็กเกจฟรี: ช่วง "ทั้งหมด" ถูกล็อก → แสดง 30 วันแทน */
+  const period = requestedPeriod === "all" && !premium.active ? "30" : requestedPeriod;
+  const allPeriodLocked = requestedPeriod === "all" && !premium.active;
+
+  const statsSince =
+    period === "all" ? null : new Date(Date.now() - (period === "7" ? 7 : 30) * 24 * 60 * 60 * 1000);
+
+  const statEvents = await getVoiceStatEvents(guildId, statsSince);
   const leaderboard = computeVoiceLeaderboard(statEvents).slice(0, 10);
 
-  let logs = await getVoiceLogs(guildId, { page, perPage: PER_PAGE, event: eventFilter });
+  let logs = await getVoiceLogs(guildId, { page, perPage: PER_PAGE, event: eventFilter, since: cutoff });
   const totalPages = Math.max(1, Math.ceil(logs.total / PER_PAGE));
   if (page > totalPages) {
-    logs = await getVoiceLogs(guildId, { page: totalPages, perPage: PER_PAGE, event: eventFilter });
+    logs = await getVoiceLogs(guildId, { page: totalPages, perPage: PER_PAGE, event: eventFilter, since: cutoff });
   }
 
   const queryFor = (overrides: { page?: number; type?: VoiceEvent | null; period?: "all" | "7" | "30" }) => {
@@ -206,9 +217,38 @@ export default async function GuildDetailPage(props: PageProps<"/dashboard/[guil
               <span className={botIn ? "text-emerald-700" : "text-amber-700"}>
                 {botIn ? "· บอทอยู่ในเซิร์ฟเวอร์" : "· ยังไม่ได้เพิ่มบอท"}
               </span>
+              {premium.active ? (
+                <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 font-medium text-blue-700">
+                  ⭐ Premium ถึง {formatPremiumDate(premium.currentPeriodEnd)}
+                </span>
+              ) : (
+                <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-600">
+                  แพ็กเกจฟรี
+                </span>
+              )}
             </p>
           </div>
         </div>
+
+        {/* อัปเกรด Premium (แสดงเฉพาะแพ็กเกจฟรี) */}
+        {!premium.active ? (
+          <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50/60 p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-slate-900">
+                  ⭐ ปลดล็อกข้อมูลเต็มด้วย Premium {PREMIUM_PRICE_THB} บาท/เดือน
+                </h2>
+                <p className="mt-1.5 text-sm leading-6 text-slate-600">
+                  อันดับตลอดกาล • ประวัติเกิน {FREE_HISTORY_DAYS} วัน • ส่งออก CSV • รายงานประจำสัปดาห์อัตโนมัติ •
+                  การ์ด /profile แบบเต็ม — ต่อเซิร์ฟเวอร์ ยกเลิกได้ทุกเมื่อ
+                </p>
+              </div>
+              <Link href="/premium" className="btn-primary btn-sm shrink-0">
+                ดูแพ็กเกจ Premium
+              </Link>
+            </div>
+          </div>
+        ) : null}
 
         {saved ? <Note tone="emerald">บันทึกการตั้งค่าเรียบร้อยแล้ว</Note> : null}
         {errorCode ? <Note tone="rose">{ERROR_MESSAGES[errorCode] ?? "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"}</Note> : null}
@@ -266,7 +306,9 @@ export default async function GuildDetailPage(props: PageProps<"/dashboard/[guil
                   {channelOptions(channels, settings?.weeklyChannelId ?? null)}
                 </select>
                 <p className="mt-1.5 text-xs leading-5 text-slate-400">
-                  สรุปภาพรวมส่งอัตโนมัติทุกวันจันทร์ 09:00 น. (เวลาไทย)
+                  {premium.active
+                    ? "สรุปภาพรวมส่งอัตโนมัติทุกวันจันทร์ 09:00 น. (เวลาไทย)"
+                    : "บันทึกห้องไว้ได้ แต่จะยังไม่ส่งอัตโนมัติจนเปิด Premium — ส่งทดสอบได้ด้วย /weekly now"}
                 </p>
               </div>
             </div>
@@ -303,17 +345,27 @@ export default async function GuildDetailPage(props: PageProps<"/dashboard/[guil
                   { key: "7", label: "7 วัน" },
                   { key: "30", label: "30 วัน" },
                 ] as const
-              ).map((option) => (
-                <Link
-                  key={option.key}
-                  href={queryFor({ page: 1, period: option.key })}
-                  className={`rounded-md px-3 py-1 transition-colors ${
-                    option.key === period ? "bg-blue-50 font-medium text-blue-700" : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  {option.label}
-                </Link>
-              ))}
+              ).map((option) => {
+                const locked = option.key === "all" && !premium.active;
+                const active = option.key === period;
+                return (
+                  <Link
+                    key={option.key}
+                    href={locked ? "/premium" : queryFor({ page: 1, period: option.key })}
+                    title={locked ? "อันดับตลอดกาลเป็นฟีเจอร์ Premium" : undefined}
+                    className={`rounded-md px-3 py-1 transition-colors ${
+                      active
+                        ? "bg-blue-50 font-medium text-blue-700"
+                        : locked
+                          ? "text-slate-400 hover:text-blue-700"
+                          : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    {locked ? "🔒 " : ""}
+                    {option.label}
+                  </Link>
+                );
+              })}
             </div>
           </div>
 
@@ -361,29 +413,54 @@ export default async function GuildDetailPage(props: PageProps<"/dashboard/[guil
               </div>
             )}
           </div>
+          {allPeriodLocked ? (
+            <p className="mt-3 text-xs text-blue-700">
+              🔒 ช่วง &ldquo;ทั้งหมด&rdquo; เป็นฟีเจอร์ Premium — ตอนนี้แสดง 30 วันล่าสุด{" "}
+              <Link href="/premium" className="font-medium underline underline-offset-2">
+                ดูแพ็กเกจ {PREMIUM_PRICE_THB} บาท/เดือน
+              </Link>
+            </p>
+          ) : null}
         </section>
 
         {/* ประวัติ */}
         <section className="mt-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-base font-semibold text-slate-900">ประวัติล่าสุด</h2>
-            <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 text-sm">
-              {FILTERS.map((filter) => {
-                const active = filter.key === eventFilter;
-                return (
-                  <Link
-                    key={filter.label}
-                    href={queryFor({ page: 1, type: filter.key })}
-                    className={`rounded-md px-3 py-1 transition-colors ${
-                      active ? "bg-blue-50 font-medium text-blue-700" : "text-slate-500 hover:text-slate-800"
-                    }`}
-                  >
-                    {filter.label}
-                  </Link>
-                );
-              })}
+            <div className="flex flex-wrap items-center gap-2">
+              {premium.active ? (
+                <a href={`/api/dashboard/${guildId}/export`} className="btn-secondary btn-sm">
+                  ⬇️ ส่งออก CSV
+                </a>
+              ) : (
+                <Link href="/premium" className="btn-secondary btn-sm">
+                  🔒 ปลดล็อก CSV
+                </Link>
+              )}
+              <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 text-sm">
+                {FILTERS.map((filter) => {
+                  const active = filter.key === eventFilter;
+                  return (
+                    <Link
+                      key={filter.label}
+                      href={queryFor({ page: 1, type: filter.key })}
+                      className={`rounded-md px-3 py-1 transition-colors ${
+                        active ? "bg-blue-50 font-medium text-blue-700" : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      {filter.label}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           </div>
+
+          <p className="mt-2 text-xs text-slate-400">
+            {premium.active
+              ? "แสดงประวัติทั้งหมดที่บันทึกไว้ — ส่งออกเป็นไฟล์ CSV ได้"
+              : `แพ็กเกจฟรีแสดง ${FREE_HISTORY_DAYS} วันล่าสุด — ประวัติเก่ากว่านี้และส่งออก CSV อยู่ในแพ็กเกจ Premium`}
+          </p>
 
           <div className="card mt-4 overflow-hidden">
             <div className="overflow-x-auto">
