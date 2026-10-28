@@ -228,6 +228,9 @@ export default async function GuildDetailPage(props: PageProps<"/dashboard/[guil
               )}
             </p>
           </div>
+          <Link href={`/dashboard/${guildId}/cards`} className="btn-secondary btn-sm ml-auto shrink-0">
+            🎨 ปรับแต่งการ์ด
+          </Link>
         </div>
 
         {/* อัปเกรด Premium (แสดงเฉพาะแพ็กเกจฟรี) */}

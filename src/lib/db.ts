@@ -347,6 +347,45 @@ export async function getVoiceSnapshot(guildId: string): Promise<VoiceSnapshot |
   }
 }
 
+// ─────────────────────────── card_layouts (Card Studio) ───────────────────────────
+
+/** อ่านเลย์เอาต์การ์ดที่บันทึกไว้ (null = ยังไม่เคยตั้ง / อ่านไม่ได้) */
+export async function getCardLayoutRow(
+  guildId: string,
+  variant: "profile" | "weekly" = "profile",
+): Promise<unknown | null> {
+  const db = getPool();
+  if (!db) return null;
+  try {
+    const result = await db.query<{ layout: unknown }>(
+      "SELECT layout FROM card_layouts WHERE guild_id = $1 AND variant = $2",
+      [guildId, variant],
+    );
+    return result.rows.length ? result.rows[0].layout : null;
+  } catch (error) {
+    console.error("[web/db] อ่านเลย์เอาต์การ์ดไม่สำเร็จ:", error);
+    return null;
+  }
+}
+
+/** บันทึกเลย์เอาต์การ์ด (สร้าง/ทับแถวเดิม) */
+export async function upsertCardLayout(
+  guildId: string,
+  layout: unknown,
+  variant: "profile" | "weekly" = "profile",
+): Promise<void> {
+  const db = getPool();
+  if (!db) throw new Error("DATABASE_URL ยังไม่ได้ตั้งค่า");
+
+  await db.query(
+    `INSERT INTO card_layouts (guild_id, variant, layout, updated_at)
+     VALUES ($1, $2, $3::jsonb, now())
+     ON CONFLICT (guild_id, variant)
+     DO UPDATE SET layout = EXCLUDED.layout, updated_at = now()`,
+    [guildId, variant, JSON.stringify(layout)],
+  );
+}
+
 // ─────────────────────────── guild_subscriptions (Premium 29 บาท/เดือน) ───────────────────────────
 
 export type SubscriptionStatus = "active" | "revoked";
