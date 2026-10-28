@@ -13,6 +13,7 @@
 | `/premium` | แพ็กเกจ **Premium 29 บาท/เดือน** — เทียบฟีเจอร์ + วิธีเปิดใช้ |
 | `/dashboard` | เข้าสู่ระบบด้วย Discord → เลือกเซิร์ฟเวอร์ (เห็นเฉพาะที่ตัวเองเป็นผู้ดูแล) |
 | `/dashboard/<guildId>` | ตั้งค่าห้อง log / ห้องรายงาน + สถิติ + อันดับผู้ใช้ + ประวัติ voice log (ป้าย Premium / ล็อกฟีเจอร์ฝั่งฟรี) |
+| `/dashboard/<guildId>/cards` | **Card Studio** — ลาก/ย่อ/ปรับสีการ์ด /profile พร้อมพรีวิวสดจากบอท |
 | `/api/dashboard/<guildId>/export` | ส่งออกประวัติเป็น CSV — **เฉพาะเซิร์ฟเวอร์ Premium** (ตรวจสิทธิ์ทุกครั้ง) |
 | `/terms` · `/privacy` | ข้อกำหนดการให้บริการ · นโยบายความเป็นส่วนตัว |
 | `/api/auth/login` · `/api/auth/callback` | OAuth2 login แดชบอร์ด (scope: identify + guilds) |
@@ -46,6 +47,7 @@
 | `DISCORD_TOKEN` | โทเคนบอท — ใช้ดึงรายชื่อห้องในเซิร์ฟเวอร์ |
 | `DATABASE_URL` | PostgreSQL (Supabase pooler) — ฐานข้อมูลเดียวกับบอท |
 | `SESSION_SECRET` | คีย์เซ็นเซสชัน (`openssl rand -hex 32`) |
+| `CARD_PREVIEW_ORIGIN` | (ไม่บังคับ) base URL ของบอทสำหรับพรีวิวการ์ด — ค่าเริ่มต้น `https://rem-bot-discord.onrender.com` |
 
 ## Developer Portal — ตั้งค่าครั้งเดียว
 
