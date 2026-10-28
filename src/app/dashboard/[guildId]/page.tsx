@@ -239,8 +239,8 @@ export default async function GuildDetailPage(props: PageProps<"/dashboard/[guil
                   ⭐ ปลดล็อกข้อมูลเต็มด้วย Premium {PREMIUM_PRICE_THB} บาท/เดือน
                 </h2>
                 <p className="mt-1.5 text-sm leading-6 text-slate-600">
-                  อันดับตลอดกาล • ประวัติเกิน {FREE_HISTORY_DAYS} วัน • ส่งออก CSV • รายงานประจำสัปดาห์อัตโนมัติ •
-                  การ์ด /profile แบบเต็ม — ต่อเซิร์ฟเวอร์ ยกเลิกได้ทุกเมื่อ
+                  อันดับตลอดกาล • ประวัติเกิน {FREE_HISTORY_DAYS} วัน • ส่งออก CSV • รายงานประจำสัปดาห์อัตโนมัติ
+                  — ต่อเซิร์ฟเวอร์ ยกเลิกได้ทุกเมื่อ
                 </p>
               </div>
               <Link href="/premium" className="btn-primary btn-sm shrink-0">
@@ -255,7 +255,7 @@ export default async function GuildDetailPage(props: PageProps<"/dashboard/[guil
 
         {!botIn ? (
           <div className="card mt-6 p-6">
-            <h2 className="text-base font-semibold text-slate-900">บอท Rem ยังไม่ได้อยู่ในเซิร์ฟเวอร์นี้</h2>
+            <h2 className="text-base font-semibold text-slate-900">บอท Ruru ยังไม่ได้อยู่ในเซิร์ฟเวอร์นี้</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               เพิ่มบอทก่อนเพื่อเปิดใช้ระบบบันทึก และเพื่อให้สามารถเลือกห้องจากรายการได้ —
               หลังจากเพิ่มแล้ว กลับมาที่หน้านี้ได้ทันที

@@ -1,6 +1,6 @@
-# Rem — เว็บไซต์ + แดชบอร์ด (`Rem-Bot-Website`)
+# Ruru — เว็บไซต์ + แดชบอร์ด (`Rem-Bot-Website`)
 
-เว็บประชาสัมพันธ์ + **แดชบอร์ดจัดการบอท Discord "Rem"** — Next.js 16 + Tailwind CSS 4 (ธีมขาว–ฟ้า)
+เว็บประชาสัมพันธ์ + **แดชบอร์ดจัดการบอท Discord "Ruru"** — Next.js 16 + Tailwind CSS 4 (ธีมขาว–ฟ้า)
 
 🌍 **Live:** https://rem-bot.vercel.app — Vercel project `rem-bot`
 > 🤖 ตัวบอท Discord อยู่ในอีก repo: https://github.com/witsarat/Rem-Bot-Discord (deploy บน Render)

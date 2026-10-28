@@ -4,7 +4,7 @@ import { LiteHeader } from "@/components/lite-header";
 
 export const metadata: Metadata = {
   title: "ข้อกำหนดการให้บริการ",
-  description: "ข้อกำหนดการให้บริการของบอท Rem — Discord Voice Log Bot",
+  description: "ข้อกำหนดการให้บริการของบอท Ruru — Discord Voice Log Bot",
 };
 
 export default function TermsPage() {
@@ -17,13 +17,13 @@ export default function TermsPage() {
 
         <h2>1. การยอมรับข้อกำหนด</h2>
         <p>
-          การใช้งานบอท &ldquo;Rem&rdquo; (&ldquo;บอท&rdquo;) และเว็บไซต์นี้ ถือว่าคุณยอมรับข้อกำหนดการให้บริการฉบับนี้
+          การใช้งานบอท &ldquo;Ruru&rdquo; (&ldquo;บอท&rdquo;) และเว็บไซต์นี้ ถือว่าคุณยอมรับข้อกำหนดการให้บริการฉบับนี้
           หากคุณไม่ยอมรับ กรุณาหยุดใช้งานบอทและเว็บไซต์
         </p>
 
         <h2>2. ลักษณะของบริการ</h2>
         <p>
-          Rem เป็นบอท Discord สำหรับบันทึกเหตุการณ์เข้า–ออก–ย้ายห้องเสียงของสมาชิก แสดงสถิติ และจัดส่งรายงานสรุป
+          Ruru เป็นบอท Discord สำหรับบันทึกเหตุการณ์เข้า–ออก–ย้ายห้องเสียงของสมาชิก แสดงสถิติ และจัดส่งรายงานสรุป
           โดยให้บริการใน 2 แพ็กเกจ คือ <strong>แพ็กเกจฟรี</strong> และ <strong>แพ็กเกจ Premium</strong> (ดูข้อ 7)
           บริการให้บริการแบบ &ldquo;ตามสภาพ&rdquo; (as-is) ผู้พัฒนาอาจปรับปรุง เปลี่ยนแปลง หรือหยุดให้บริการบางส่วน
           โดยไม่แจ้งล่วงหน้า และอาจมีช่วงที่บอทออฟไลน์ชั่วคราวจากการบำรุงรักษาหรือข้อจำกัดของโฮสติ้ง
@@ -98,7 +98,7 @@ export default function TermsPage() {
       </main>
       <footer className="border-t border-slate-200">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-xs text-slate-400 sm:px-6">
-          <span>© 2569 Rem — บอทบันทึกห้องเสียง Discord</span>
+          <span>© 2569 Ruru — บอทบันทึกห้องเสียง Discord</span>
           <span className="flex gap-4">
             <Link href="/terms" className="hover:text-slate-600">ข้อกำหนดการให้บริการ</Link>
             <Link href="/privacy" className="hover:text-slate-600">นโยบายความเป็นส่วนตัว</Link>

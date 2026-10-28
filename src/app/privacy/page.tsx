@@ -4,7 +4,7 @@ import { LiteHeader } from "@/components/lite-header";
 
 export const metadata: Metadata = {
   title: "นโยบายความเป็นส่วนตัว",
-  description: "นโยบายความเป็นส่วนตัวของบอท Rem — เก็บอะไร ใช้ทำอะไร และดูแลอย่างไร",
+  description: "นโยบายความเป็นส่วนตัวของบอท Ruru — เก็บอะไร ใช้ทำอะไร และดูแลอย่างไร",
 };
 
 export default function PrivacyPage() {
@@ -15,7 +15,7 @@ export default function PrivacyPage() {
         <h1 className="text-2xl font-semibold text-slate-900">นโยบายความเป็นส่วนตัว</h1>
         <p className="mt-2 text-sm text-slate-400">ปรับปรุงล่าสุด: 10 ตุลาคม 2569</p>
         <p className="mt-4 text-sm leading-7 text-slate-600">
-          นโยบายนี้อธิบายว่า Rem (&ldquo;บอท&rdquo;) และเว็บไซต์นี้เก็บข้อมูลอะไรบ้าง ใช้ทำอะไร
+          นโยบายนี้อธิบายว่า Ruru (&ldquo;บอท&rdquo;) และเว็บไซต์นี้เก็บข้อมูลอะไรบ้าง ใช้ทำอะไร
           และคุณจัดการข้อมูลของตัวเองได้อย่างไร
         </p>
 
@@ -90,7 +90,7 @@ export default function PrivacyPage() {
       </main>
       <footer className="border-t border-slate-200">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-xs text-slate-400 sm:px-6">
-          <span>© 2569 Rem — บอทบันทึกห้องเสียง Discord</span>
+          <span>© 2569 Ruru — บอทบันทึกห้องเสียง Discord</span>
           <span className="flex gap-4">
             <Link href="/terms" className="hover:text-slate-600">ข้อกำหนดการให้บริการ</Link>
             <Link href="/privacy" className="hover:text-slate-600">นโยบายความเป็นส่วนตัว</Link>

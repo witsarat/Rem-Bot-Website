@@ -38,7 +38,7 @@ function htmlPage(options: {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${escapeHtml(title)} — Rem</title>
+<title>${escapeHtml(title)} — Ruru</title>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
@@ -58,7 +58,7 @@ function htmlPage(options: {
     <h1>${escapeHtml(heading)}</h1>
     <p>${body}</p>
     ${buttonHtml}
-    <p class="muted">Rem — บอทบันทึกห้องเสียง Discord</p>
+    <p class="muted">Ruru — บอทบันทึกห้องเสียง Discord</p>
   </main>
 </body>
 </html>`;
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
     const accessToken = await exchangeCode(`${url.origin}${LINKED_ROLES_PATH}`, code);
     const me = await fetchMe(accessToken);
     await updateRoleConnection(accessToken, {
-      platformName: "Rem",
+      platformName: "Ruru",
       platformUsername: displayName(me),
       metadata: { connected: "1" },
     });
@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
     const res = htmlPage({
       title: "เชื่อมต่อสำเร็จ",
       heading: "เชื่อมต่อสำเร็จ",
-      body: `บัญชี <strong>${escapeHtml(displayName(me))}</strong> เชื่อมต่อกับ Rem เรียบร้อยแล้ว — กลับไปที่ Discord เพื่อรับบทบาทของคุณได้เลย`,
+      body: `บัญชี <strong>${escapeHtml(displayName(me))}</strong> เชื่อมต่อกับ Ruru เรียบร้อยแล้ว — กลับไปที่ Discord เพื่อรับบทบาทของคุณได้เลย`,
       button: { href: "https://discord.com/app", label: "กลับไปที่ Discord" },
     });
     res.cookies.delete(STATE_COOKIE);

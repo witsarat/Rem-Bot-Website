@@ -83,7 +83,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   { name: "คำสั่ง /setup • /help • /shake", free: "✓", premium: "✓" },
   { name: "/top 7 วัน / 30 วัน", free: "✓", premium: "✓" },
   { name: "/top ทั้งหมด (ตลอดกาล)", free: "—", premium: "✓", premiumOnly: true },
-  { name: "/profile การ์ดสมาชิก", free: "เวลา 7 / 30 วัน", premium: "+ ตลอดกาล, อันดับ, ห้องยอดนิยม" },
+  { name: "/profile การ์ดสมาชิก", free: "✓", premium: "✓" },
   { name: "รายงานประจำสัปดาห์อัตโนมัติ", free: "ส่งทดสอบเองได้", premium: "ส่งทุกจันทร์ 09:00 น." },
   { name: "ประวัติในแดชบอร์ด", free: `${FREE_HISTORY_DAYS} วันล่าสุด`, premium: "ทั้งหมด", premiumOnly: true },
   { name: "ส่งออก CSV", free: "—", premium: "✓", premiumOnly: true },

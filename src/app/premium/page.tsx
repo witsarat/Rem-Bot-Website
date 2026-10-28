@@ -6,7 +6,7 @@ import { FREE_HISTORY_DAYS, PREMIUM_FEATURES, PREMIUM_PERIOD_DAYS, PREMIUM_PRICE
 
 export const metadata: Metadata = {
   title: "แพ็กเกจ Premium",
-  description: `Rem Premium ${PREMIUM_PRICE_THB} บาท/เดือน ต่อเซิร์ฟเวอร์ — อันดับตลอดกาล การ์ดสมาชิกเต็มรูปแบบ รายงานอัตโนมัติ ประวัติทั้งหมด และส่งออก CSV`,
+  description: `Ruru Premium ${PREMIUM_PRICE_THB} บาท/เดือน ต่อเซิร์ฟเวอร์ — อันดับตลอดกาล การ์ดสมาชิกเต็มรูปแบบ รายงานอัตโนมัติ ประวัติทั้งหมด และส่งออก CSV`,
 };
 
 const CONTACT_URL = `https://github.com/witsarat/Rem-Bot-Discord/issues/new?title=${encodeURIComponent(
@@ -205,7 +205,7 @@ export default function PremiumPage() {
 
       <footer className="border-t border-slate-200">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-xs text-slate-400 sm:px-6">
-          <span>© 2569 Rem — บอทบันทึกห้องเสียง Discord</span>
+          <span>© 2569 Ruru — บอทบันทึกห้องเสียง Discord</span>
           <span className="flex gap-4">
             <Link href="/terms" className="hover:text-slate-600">
               ข้อกำหนดการให้บริการ

@@ -8,13 +8,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Rem — บอทบันทึกห้องเสียง Discord",
-    template: "%s · Rem",
+    default: "Ruru — บอทบันทึกห้องเสียง Discord",
+    template: "%s · Ruru",
   },
   description:
     "บันทึกการเข้า–ออก–ย้ายห้องเสียงของสมาชิกเป็น log อัตโนมัติ พร้อมอันดับเวลาห้องเสียง รายงานประจำสัปดาห์ และแดชบอร์ดจัดการเซิร์ฟเวอร์ — เริ่มใช้ฟรีทุกเซิร์ฟเวอร์ หรืออัปเกรด Premium 29 บาท/เดือน",
   openGraph: {
-    title: "Rem — บอทบันทึกห้องเสียง Discord",
+    title: "Ruru — บอทบันทึกห้องเสียง Discord",
     description: "ระบบ voice log ครบวงจรสำหรับเซิร์ฟเวอร์ Discord",
     type: "website",
   },

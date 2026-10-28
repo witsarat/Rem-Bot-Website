@@ -1,6 +1,6 @@
 /** โลโก้ของเว็บ — สี่เหลี่ยมมุมโค้งสีฟ้า + แถบเสียงสีขาว */
 
-export function RemMark({ className }: { className?: string }) {
+export function RuruMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
       <rect width="32" height="32" rx="9" fill="#1436ff" />
@@ -18,9 +18,9 @@ export function RemMark({ className }: { className?: string }) {
 export function Brand({ className, subtitle = true }: { className?: string; subtitle?: boolean }) {
   return (
     <span className={`flex items-center gap-2.5 ${className ?? ""}`}>
-      <RemMark className="h-8 w-8" />
+      <RuruMark className="h-8 w-8" />
       <span className="flex flex-col leading-none">
-        <span className="text-base font-bold text-slate-900">Rem</span>
+        <span className="text-base font-bold text-slate-900">Ruru</span>
         {subtitle ? <span className="mt-0.5 text-[11px] text-slate-400">Voice Log Bot</span> : null}
       </span>
     </span>
