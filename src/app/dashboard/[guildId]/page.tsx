@@ -233,7 +233,7 @@ export default async function GuildDetailPage(props: PageProps<"/dashboard/[guil
               🎨 ปรับแต่งการ์ด
             </Link>
             <Link href={`/dashboard/${guildId}/rewards`} className="btn-secondary btn-sm">
-              🏅 ยศ/achievements
+              🏅 Role rewards
             </Link>
           </div>
         </div>

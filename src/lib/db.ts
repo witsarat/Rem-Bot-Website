@@ -348,26 +348,12 @@ export async function getVoiceSnapshot(guildId: string): Promise<VoiceSnapshot |
 }
 
 
-// ─────────────────────────── Achievements + Role rewards ───────────────────────────
-
-export const DEFAULT_ACHIEVEMENT_TIERS = [
-  { tier: "copper", thresholdSeconds: 3_600 },
-  { tier: "bronze", thresholdSeconds: 10_800 },
-  { tier: "silver", thresholdSeconds: 36_000 },
-  { tier: "gold", thresholdSeconds: 90_000 },
-];
+// ─────────────────────────── Role rewards ───────────────────────────
 
 export interface RewardConfig {
   announceChannelId: string | null;
-  achievementsEnabled: boolean;
   rewardsEnabled: boolean;
   retention: "all" | "highest";
-}
-
-export interface AchievementTierRow {
-  tier: string;
-  thresholdSeconds: number;
-  enabled: boolean;
 }
 
 export interface RoleRewardRow {
@@ -378,49 +364,35 @@ export interface RoleRewardRow {
 
 export interface RewardSettings {
   config: RewardConfig;
-  tiers: AchievementTierRow[];
   roleRewards: RoleRewardRow[];
-  counts: { achievements: number; roles: number };
+  /** จำนวนยศที่ให้ไปแล้วทั้งหมดในเซิร์ฟเวอร์ */
+  awardedCount: number;
 }
 
 const EMPTY_REWARD_CONFIG: RewardConfig = {
   announceChannelId: null,
-  achievementsEnabled: false,
   rewardsEnabled: false,
   retention: "all",
 };
 
-/** อ่านค่าตั้ง Achievements/Role rewards ทั้งชุด (ตารางยังไม่มี → ค่าเริ่มต้น) */
+/** อ่านค่าตั้ง Role rewards (ตารางยังไม่มี → ค่าเริ่มต้น) */
 export async function getRewardSettings(guildId: string): Promise<RewardSettings> {
   const db = getPool();
   if (!db) {
-    return {
-      config: { ...EMPTY_REWARD_CONFIG },
-      tiers: DEFAULT_ACHIEVEMENT_TIERS.map((tier) => ({ ...tier, enabled: true })),
-      roleRewards: [],
-      counts: { achievements: 0, roles: 0 },
-    };
+    return { config: { ...EMPTY_REWARD_CONFIG }, roleRewards: [], awardedCount: 0 };
   }
 
-  const [configResult, tierResult, rewardResult, countResult] = await Promise.all([
-    db.query<{
-      announce_channel_id: string | null;
-      achievements_enabled: boolean;
-      rewards_enabled: boolean;
-      retention: string;
-    }>("SELECT announce_channel_id, achievements_enabled, rewards_enabled, retention FROM guild_reward_config WHERE guild_id = $1", [guildId]),
-    db.query<{ tier: string; threshold_seconds: string; enabled: boolean }>(
-      "SELECT tier, threshold_seconds, enabled FROM guild_achievements WHERE guild_id = $1 AND kind = 'voice'",
+  const [configResult, rewardResult, countResult] = await Promise.all([
+    db.query<{ announce_channel_id: string | null; rewards_enabled: boolean; retention: string }>(
+      "SELECT announce_channel_id, rewards_enabled, retention FROM guild_reward_config WHERE guild_id = $1",
       [guildId],
     ),
     db.query<{ id: string; threshold_seconds: string; role_id: string }>(
       "SELECT id::text AS id, threshold_seconds, role_id FROM guild_role_rewards WHERE guild_id = $1 AND kind = 'voice' ORDER BY threshold_seconds ASC",
       [guildId],
     ),
-    db.query<{ achievements: number; roles: number }>(
-      `SELECT
-         (SELECT count(*)::int FROM member_achievements WHERE guild_id = $1) AS achievements,
-         (SELECT count(*)::int FROM member_role_awards WHERE guild_id = $1) AS roles`,
+    db.query<{ roles: number }>(
+      "SELECT count(*)::int AS roles FROM member_role_awards WHERE guild_id = $1",
       [guildId],
     ),
   ]);
@@ -429,72 +401,40 @@ export async function getRewardSettings(guildId: string): Promise<RewardSettings
   const config: RewardConfig = cfg
     ? {
         announceChannelId: cfg.announce_channel_id,
-        achievementsEnabled: cfg.achievements_enabled,
         rewardsEnabled: cfg.rewards_enabled,
         retention: cfg.retention === "highest" ? "highest" : "all",
       }
     : { ...EMPTY_REWARD_CONFIG };
 
-  const tiers = tierResult.rows.length
-    ? tierResult.rows
-        .map((row) => ({ tier: row.tier, thresholdSeconds: Number(row.threshold_seconds), enabled: row.enabled }))
-        .sort((a, b) => a.thresholdSeconds - b.thresholdSeconds)
-    : DEFAULT_ACHIEVEMENT_TIERS.map((tier) => ({ ...tier, enabled: true }));
-
   return {
     config,
-    tiers,
     roleRewards: rewardResult.rows.map((row) => ({
       id: row.id,
       thresholdSeconds: Number(row.threshold_seconds),
       roleId: row.role_id,
     })),
-    counts: {
-      achievements: countResult.rows[0]?.achievements ?? 0,
-      roles: countResult.rows[0]?.roles ?? 0,
-    },
+    awardedCount: countResult.rows[0]?.roles ?? 0,
   };
 }
 
 /** บันทึกการเปิด/ปิดโมดูล + ห้องประกาศ + โหมดเก็บยศ */
 export async function saveRewardConfigDb(
   guildId: string,
-  input: { announceChannelId: string | null; achievementsEnabled: boolean; rewardsEnabled: boolean; retention: "all" | "highest" },
+  input: { announceChannelId: string | null; rewardsEnabled: boolean; retention: "all" | "highest" },
 ): Promise<void> {
   const db = getPool();
   if (!db) throw new Error("DATABASE_URL ยังไม่ได้ตั้งค่า");
 
   await db.query(
-    `INSERT INTO guild_reward_config (guild_id, announce_channel_id, achievements_enabled, rewards_enabled, retention, updated_at)
-     VALUES ($1, $2, $3, $4, $5, now())
+    `INSERT INTO guild_reward_config (guild_id, announce_channel_id, rewards_enabled, retention, updated_at)
+     VALUES ($1, $2, $3, $4, now())
      ON CONFLICT (guild_id) DO UPDATE SET
        announce_channel_id = EXCLUDED.announce_channel_id,
-       achievements_enabled = EXCLUDED.achievements_enabled,
        rewards_enabled = EXCLUDED.rewards_enabled,
        retention = EXCLUDED.retention,
        updated_at = now()`,
-    [guildId, input.announceChannelId, input.achievementsEnabled, input.rewardsEnabled, input.retention],
+    [guildId, input.announceChannelId, input.rewardsEnabled, input.retention],
   );
-}
-
-/** บันทึกเกณฑ์ achievement 4 ระดับ (วินาที) */
-export async function saveAchievementTiersDb(
-  guildId: string,
-  tiers: Array<{ tier: string; thresholdSeconds: number }>,
-): Promise<void> {
-  const db = getPool();
-  if (!db) throw new Error("DATABASE_URL ยังไม่ได้ตั้งค่า");
-
-  for (const tier of tiers) {
-    await db.query(
-      `INSERT INTO guild_achievements (guild_id, kind, tier, threshold_seconds, enabled)
-       VALUES ($1, 'voice', $2, $3, true)
-       ON CONFLICT (guild_id, kind, tier) DO UPDATE SET
-         threshold_seconds = EXCLUDED.threshold_seconds,
-         enabled = true`,
-      [guildId, tier.tier, tier.thresholdSeconds],
-    );
-  }
 }
 
 /** เพิ่มเกณฑ์ให้ยศ (ถ้าซ้ำจะไม่สร้างแถวใหม่) */
@@ -516,6 +456,17 @@ export async function deleteRoleRewardDb(guildId: string, id: string): Promise<v
   if (!db) throw new Error("DATABASE_URL ยังไม่ได้ตั้งค่า");
 
   await db.query("DELETE FROM guild_role_rewards WHERE guild_id = $1 AND id = $2::bigint", [guildId, id]);
+}
+
+/** จำนวนเกณฑ์ที่ตั้งไว้ของเซิร์ฟเวอร์ (ใช้ตรวจเพดานแพ็กเกจฟรี) */
+export async function countRoleRewards(guildId: string): Promise<number> {
+  const db = getPool();
+  if (!db) return 0;
+  const result = await db.query<{ n: number }>(
+    "SELECT count(*)::int AS n FROM guild_role_rewards WHERE guild_id = $1 AND kind = 'voice'",
+    [guildId],
+  );
+  return result.rows[0]?.n ?? 0;
 }
 
 // ─────────────────────────── card_layouts (Card Studio) ───────────────────────────

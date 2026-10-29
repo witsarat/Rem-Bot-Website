@@ -14,6 +14,8 @@ export const PREMIUM_PERIOD_DAYS = 30;
 export const FREE_HISTORY_DAYS = 30;
 /** หน้าเว็บแพ็กเกจ */
 export const PREMIUM_PATH = "/premium";
+/** จำนวนเกณฑ์ Role rewards ที่ใช้ได้ในแพ็กเกจฟรี (Premium = ไม่จำกัด) */
+export const FREE_ROLE_REWARD_LIMIT = 1;
 
 const DAY_MS = 86_400_000;
 
@@ -87,6 +89,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   { name: "รายงานประจำสัปดาห์อัตโนมัติ", free: "ส่งทดสอบเอง (embed)", premium: "การ์ดรูปภาพ + ส่งทุกจันทร์ 09:00 น." },
   { name: "ประวัติในแดชบอร์ด", free: `${FREE_HISTORY_DAYS} วันล่าสุด`, premium: "ทั้งหมด", premiumOnly: true },
   { name: "ส่งออก CSV", free: "—", premium: "✓", premiumOnly: true },
+  { name: "Role rewards (ยศตามชั่วโมงสะสม)", free: `${FREE_ROLE_REWARD_LIMIT} เกณฑ์`, premium: "ไม่จำกัดเกณฑ์" },
 ];
 
 /** วันที่แบบไทยสั้น เช่น "12 พ.ย. 2569" */

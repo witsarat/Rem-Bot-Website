@@ -7,26 +7,21 @@ import { SubmitButton } from "@/components/submit-button";
 import { loadGuildAccess } from "@/lib/auth";
 import { fetchGuildRoles, fetchGuildTextChannels, type DiscordChannel, type DiscordRole } from "@/lib/discord";
 import { getRewardSettings } from "@/lib/db";
-import { addRoleReward, removeRoleReward, saveAchievements, saveRewardModule } from "../../actions";
+import { FREE_ROLE_REWARD_LIMIT, getPremiumStatus } from "@/lib/premium";
+import { addRoleReward, removeRoleReward, saveRewardModule } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Achievements & Role rewards",
+  title: "Role rewards",
 };
 
 const ERROR_MESSAGES: Record<string, string> = {
   auth: "เซสชันหมดอายุหรือคุณไม่มีสิทธิ์ในเซิร์ฟเวอร์นี้ — กรุณาเข้าสู่ระบบใหม่",
   invalid: "ค่าที่ส่งมาไม่ถูกต้อง — ชั่วโมงต้องมากกว่า 0 และไม่เกิน 2000",
+  limit: `แพ็กเกจฟรีตั้งเกณฑ์ให้ยศได้ ${FREE_ROLE_REWARD_LIMIT} เกณฑ์ — อัปเกรด Premium เพื่อเพิ่มได้ไม่จำกัด`,
   save: "บันทึกไม่สำเร็จ — กรุณาลองใหม่อีกครั้ง",
 };
-
-const TIER_META = [
-  { tier: "copper", label: "Copper", emoji: "🥉" },
-  { tier: "bronze", label: "Bronze", emoji: "🥈" },
-  { tier: "silver", label: "Silver", emoji: "🥇" },
-  { tier: "gold", label: "Gold", emoji: "🏆" },
-];
 
 function one(value: string | string[] | undefined): string | null {
   return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
@@ -49,7 +44,7 @@ export default async function RewardsPage(props: Props) {
   const saved = one(searchParams.saved) === "1";
   const errorCode = one(searchParams.error);
 
-  const settings = await getRewardSettings(guildId);
+  const [settings, premium] = await Promise.all([getRewardSettings(guildId), getPremiumStatus(guildId)]);
   const [channels, roles] = botIn
     ? await Promise.all([
         fetchGuildTextChannels(guildId).catch(() => [] as DiscordChannel[]),
@@ -58,6 +53,8 @@ export default async function RewardsPage(props: Props) {
     : ([[], []] as [DiscordChannel[], DiscordRole[]]);
 
   const roleName = new Map(roles.map((role) => [role.id, role.name]));
+  const limitReached = !premium.active && settings.roleRewards.length >= FREE_ROLE_REWARD_LIMIT;
+  const limitLabel = premium.active ? "ไม่จำกัด" : `${FREE_ROLE_REWARD_LIMIT} เกณฑ์`;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -67,15 +64,24 @@ export default async function RewardsPage(props: Props) {
           ← กลับหน้าตั้งค่าเซิร์ฟเวอร์
         </Link>
 
-        <div className="mt-4">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Achievements &amp; Role rewards</h1>
-          <p className="mt-1 text-sm leading-6 text-slate-500">
-            ให้รางวัลจาก <span className="font-medium text-slate-700">ชั่วโมงสะสมในห้องเสียง</span> ของ{" "}
-            <span className="font-medium text-slate-700">{guild.name}</span> — ใช้เฉพาะ voice log ไม่ต้องเปิดสิทธิ์อ่านข้อความ
-          </p>
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900">Role rewards</h1>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              ให้ยศอัตโนมัติเมื่อ <span className="font-medium text-slate-700">ชั่วโมงสะสมในห้องเสียง</span> ของ{" "}
+              <span className="font-medium text-slate-700">{guild.name}</span> ถึงเกณฑ์ — ใช้เฉพาะ voice log ไม่ต้องเปิดสิทธิ์อ่านข้อความ
+            </p>
+          </div>
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              premium.active ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            {premium.active ? "⭐ Premium" : "แพ็กเกจฟรี"}
+          </span>
         </div>
 
-        {saved ? <Note tone="emerald">บันทึกแล้ว — บอทจะจ่ายรางวัลในรอบตรวจถัดไป (ทุก 10 นาที)</Note> : null}
+        {saved ? <Note tone="emerald">บันทึกแล้ว — บอทจะให้ยศในรอบตรวจถัดไป (ทุก 10 นาที)</Note> : null}
         {errorCode ? <Note tone="rose">{ERROR_MESSAGES[errorCode] ?? "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"}</Note> : null}
         {!botIn ? (
           <Note tone="amber">บอท Ruru ยังไม่ได้อยู่ในเซิร์ฟเวอร์นี้ — เพิ่มบอทก่อนจึงจะให้ยศและประกาศได้</Note>
@@ -83,12 +89,15 @@ export default async function RewardsPage(props: Props) {
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <div className="card p-4">
-            <p className="text-xs text-slate-500">Achievements ที่แจกแล้ว</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">{settings.counts.achievements}</p>
+            <p className="text-xs text-slate-500">เกณฑ์ที่ตั้งไว้</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+              {settings.roleRewards.length}
+              <span className="ml-1 text-xs font-normal text-slate-400">/ {limitLabel}</span>
+            </p>
           </div>
           <div className="card p-4">
             <p className="text-xs text-slate-500">ยศที่ให้ไปแล้ว</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">{settings.counts.roles}</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">{settings.awardedCount}</p>
           </div>
           <div className="card p-4">
             <p className="text-xs text-slate-500">ประกาศลงห้อง</p>
@@ -105,29 +114,18 @@ export default async function RewardsPage(props: Props) {
           <input type="hidden" name="guild_id" value={guildId} />
           <h2 className="text-base font-semibold text-slate-900">โมดูลและห้องประกาศ</h2>
           <p className="mt-1 text-sm leading-6 text-slate-500">
-            เปิดเฉพาะสิ่งที่ใช้ — สามารถเปิด achievements โดยไม่ให้ยศ หรือให้ยศโดยไม่ประกาศก็ได้
+            เปิดโมดูลเพื่อให้บอทจ่ายยศตามเกณฑ์ — ปิดไว้ได้ถ้ายังไม่พร้อม
           </p>
 
-          <div className="mt-4 space-y-2.5 text-sm text-slate-700">
-            <label className="flex items-center gap-2.5">
-              <input
-                type="checkbox"
-                name="achievements_enabled"
-                defaultChecked={settings.config.achievementsEnabled}
-                className="h-4 w-4 rounded border-slate-300"
-              />
-              เปิด Achievements (Copper / Bronze / Silver / Gold)
-            </label>
-            <label className="flex items-center gap-2.5">
-              <input
-                type="checkbox"
-                name="rewards_enabled"
-                defaultChecked={settings.config.rewardsEnabled}
-                className="h-4 w-4 rounded border-slate-300"
-              />
-              เปิด Role rewards (ให้ยศอัตโนมัติเมื่อถึงเกณฑ์)
-            </label>
-          </div>
+          <label className="mt-4 flex items-center gap-2.5 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              name="rewards_enabled"
+              defaultChecked={settings.config.rewardsEnabled}
+              className="h-4 w-4 rounded border-slate-300"
+            />
+            เปิด Role rewards (ให้ยศอัตโนมัติเมื่อถึงเกณฑ์)
+          </label>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <div>
@@ -172,50 +170,9 @@ export default async function RewardsPage(props: Props) {
           </div>
         </form>
 
-        {/* ── 2) เกณฑ์ achievement ── */}
-        <form action={saveAchievements} className="card mt-6 p-6">
-          <input type="hidden" name="guild_id" value={guildId} />
-          <h2 className="text-base font-semibold text-slate-900">เกณฑ์ Achievements</h2>
-          <p className="mt-1 text-sm leading-6 text-slate-500">
-            ตั้งเป็นชั่วโมงสะสม — เมื่อสมาชิกถึงเกณฑ์จะได้ achievement และประกาศ (ถ้าตั้งห้องไว้)
-          </p>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-4">
-            {TIER_META.map((meta) => {
-              const tier = settings.tiers.find((item) => item.tier === meta.tier);
-              const hours = tier ? tier.thresholdSeconds / 3600 : 0;
-              return (
-                <div key={meta.tier}>
-                  <label className="label" htmlFor={`tier_${meta.tier}`}>
-                    {meta.emoji} {meta.label}
-                  </label>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      id={`tier_${meta.tier}`}
-                      name={`tier_${meta.tier}`}
-                      type="number"
-                      min={0.5}
-                      max={2000}
-                      step={0.5}
-                      defaultValue={hours}
-                      className="input text-right tabular-nums"
-                      required
-                    />
-                    <span className="text-xs text-slate-500">ชม.</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-5">
-            <SubmitButton label="บันทึกเกณฑ์" />
-          </div>
-        </form>
-
-        {/* ── 3) Role rewards ── */}
+        {/* ── 2) เกณฑ์ให้ยศ ── */}
         <section className="card mt-6 p-6">
-          <h2 className="text-base font-semibold text-slate-900">Role rewards</h2>
+          <h2 className="text-base font-semibold text-slate-900">เกณฑ์ให้ยศ</h2>
           <p className="mt-1 text-sm leading-6 text-slate-500">
             ให้ยศอัตโนมัติเมื่อชั่วโมงสะสมถึงเกณฑ์ — บอทต้องมีสิทธิ์ <strong>Manage Roles</strong> และยศของบอทต้องอยู่สูงกว่ายศที่ให้
           </p>
@@ -235,63 +192,80 @@ export default async function RewardsPage(props: Props) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {settings.roleRewards.map((reward) => (
-                    <tr key={reward.id}>
-                      <td className="px-4 py-2.5 tabular-nums text-slate-700">{reward.thresholdSeconds / 3600} ชม.</td>
-                      <td className="px-4 py-2.5 text-slate-800">
-                        {roleName.get(reward.roleId) ?? <code className="text-xs text-slate-500">{reward.roleId}</code>}
-                      </td>
-                      <td className="px-4 py-2.5 text-right">
-                        <form action={removeRoleReward} className="inline">
-                          <input type="hidden" name="guild_id" value={guildId} />
-                          <input type="hidden" name="reward_id" value={reward.id} />
-                          <button type="submit" className="text-xs font-medium text-rose-600 hover:text-rose-700">
-                            ลบ
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
+                  {settings.roleRewards.map((reward, index) => {
+                    const inactive = !premium.active && index >= FREE_ROLE_REWARD_LIMIT;
+                    return (
+                      <tr key={reward.id} className={inactive ? "opacity-50" : undefined}>
+                        <td className="px-4 py-2.5 tabular-nums text-slate-700">{reward.thresholdSeconds / 3600} ชม.</td>
+                        <td className="px-4 py-2.5 text-slate-800">
+                          {roleName.get(reward.roleId) ?? <code className="text-xs text-slate-500">{reward.roleId}</code>}
+                          {inactive ? <span className="ml-2 text-xs text-slate-400">(ต้องอัปเกรด)</span> : null}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <form action={removeRoleReward} className="inline">
+                            <input type="hidden" name="guild_id" value={guildId} />
+                            <input type="hidden" name="reward_id" value={reward.id} />
+                            <button type="submit" className="text-xs font-medium text-rose-600 hover:text-rose-700">
+                              ลบ
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
 
-          <form action={addRoleReward} className="mt-5 grid gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:grid-cols-[140px_minmax(0,1fr)_auto] sm:items-end">
-            <input type="hidden" name="guild_id" value={guildId} />
-            <div>
-              <label className="label" htmlFor="threshold_hours">
-                เมื่อครบ (ชม.)
-              </label>
-              <input
-                id="threshold_hours"
-                name="threshold_hours"
-                type="number"
-                min={0.5}
-                max={2000}
-                step={0.5}
-                defaultValue={5}
-                className="input text-right tabular-nums"
-                required
-              />
+          {limitReached ? (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              แพ็กเกจฟรีตั้งได้ {FREE_ROLE_REWARD_LIMIT} เกณฑ์ —{" "}
+              <Link href="/premium" className="font-medium underline">
+                อัปเกรด Premium 29 บาท/เดือน
+              </Link>{" "}
+              เพื่อเพิ่มได้ไม่จำกัด
             </div>
-            <div>
-              <label className="label" htmlFor="role_id">
-                ยศ
-              </label>
-              <select id="role_id" name="role_id" className="input" required defaultValue="">
-                <option value="" disabled>
-                  — เลือกยศ —
-                </option>
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    @ {role.name}
+          ) : (
+            <form
+              action={addRoleReward}
+              className="mt-5 grid gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:grid-cols-[140px_minmax(0,1fr)_auto] sm:items-end"
+            >
+              <input type="hidden" name="guild_id" value={guildId} />
+              <div>
+                <label className="label" htmlFor="threshold_hours">
+                  เมื่อครบ (ชม.)
+                </label>
+                <input
+                  id="threshold_hours"
+                  name="threshold_hours"
+                  type="number"
+                  min={0.5}
+                  max={2000}
+                  step={0.5}
+                  defaultValue={5}
+                  className="input text-right tabular-nums"
+                  required
+                />
+              </div>
+              <div>
+                <label className="label" htmlFor="role_id">
+                  ยศ
+                </label>
+                <select id="role_id" name="role_id" className="input" required defaultValue="">
+                  <option value="" disabled>
+                    — เลือกยศ —
                   </option>
-                ))}
-              </select>
-            </div>
-            <SubmitButton label="เพิ่มเกณฑ์" />
-          </form>
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      @ {role.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <SubmitButton label="เพิ่มเกณฑ์" />
+            </form>
+          )}
 
           {roles.length === 0 ? (
             <p className="mt-2 text-xs text-amber-700">
@@ -302,7 +276,7 @@ export default async function RewardsPage(props: Props) {
 
         <p className="mt-4 text-xs leading-5 text-slate-400">
           หมายเหตุ: ชั่วโมงนับจาก voice log ที่บันทึกไว้ + เซสชันที่กำลังอยู่ในห้องตอนนี้ • การให้ยศจะเกิดขึ้นในรอบตรวจถัดไป (ทุก 10 นาที)
-          • การลบเกณฑ์ไม่ถอดยศที่ให้ไปแล้ว
+          • การลบเกณฑ์ไม่ถอดยศที่ให้ไปแล้ว • ฟรี {FREE_ROLE_REWARD_LIMIT} เกณฑ์ / Premium ไม่จำกัด
         </p>
 
         <div className="h-10" />
