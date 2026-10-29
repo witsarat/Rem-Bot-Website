@@ -12,7 +12,7 @@ import {
   upsertGuildSettings,
 } from "@/lib/db";
 import { FREE_ROLE_REWARD_LIMIT, getPremiumStatus } from "@/lib/premium";
-import { normalizeLayout } from "@/lib/card";
+import { CARD_PRESETS, themeToLayout } from "@/lib/card";
 
 function normalizeChannelId(value: FormDataEntryValue | null): string | null | "invalid" {
   const raw = typeof value === "string" ? value.trim() : "";
@@ -50,28 +50,24 @@ export async function saveSettings(formData: FormData): Promise<void> {
 }
 
 /** บันทึกเลย์เอาต์การ์ดจากหน้า Card Studio (ตรวจสิทธิ์ + clamp ค่าก่อนเก็บ) */
-export async function saveCardLayout(formData: FormData): Promise<void> {
+export async function saveCardTheme(formData: FormData): Promise<void> {
   const guildId = String(formData.get("guild_id") ?? "").trim();
   if (!/^\d{17,20}$/.test(guildId)) redirect("/dashboard");
 
   const access = await loadGuildAccess(guildId);
   if (!access.ok) redirect(`/dashboard/${guildId}/cards?error=auth`);
 
-  const raw = formData.get("layout");
-  const text = typeof raw === "string" ? raw : "";
-  if (!text || text.length > 20_000) redirect(`/dashboard/${guildId}/cards?error=invalid`);
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    redirect(`/dashboard/${guildId}/cards?error=invalid`);
-  }
+  const themeId = String(formData.get("theme_id") ?? "").trim();
+  const theme = CARD_PRESETS.find((item) => item.id === themeId);
+  if (!theme) redirect(`/dashboard/${guildId}/cards?error=invalid`);
 
   try {
-    await upsertCardLayout(guildId, normalizeLayout(parsed), "profile");
+    const stored = themeToLayout(theme);
+    // ใช้ธีมเดียวกันทั้งการ์ด /profile และรายงาน Weekly
+    await upsertCardLayout(guildId, stored, "profile");
+    await upsertCardLayout(guildId, stored, "weekly");
   } catch (error) {
-    console.error("[cards] บันทึกเลย์เอาต์ไม่สำเร็จ:", error);
+    console.error("[cards] บันทึกธีมไม่สำเร็จ:", error);
     redirect(`/dashboard/${guildId}/cards?error=save`);
   }
 

@@ -6,7 +6,7 @@ import { CardEditor } from "@/components/card-editor";
 import { Note } from "@/components/note";
 import { loadGuildAccess } from "@/lib/auth";
 import { getCardLayoutRow } from "@/lib/db";
-import { normalizeLayout } from "@/lib/card";
+import { resolveThemeId } from "@/lib/card";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 const ERROR_MESSAGES: Record<string, string> = {
   auth: "เซสชันหมดอายุหรือคุณไม่มีสิทธิ์ในเซิร์ฟเวอร์นี้ — กรุณาเข้าสู่ระบบใหม่",
-  invalid: "ข้อมูลเลย์เอาต์ไม่ถูกต้อง กรุณาลองใหม่",
+  invalid: "ธีมที่เลือกไม่ถูกต้อง กรุณาลองใหม่",
   save: "บันทึกไม่สำเร็จ — กรุณาลองใหม่อีกครั้ง",
 };
 
@@ -37,7 +37,7 @@ export default async function CardsPage(props: CardsPageProps) {
   const errorCode = Array.isArray(searchParams.error) ? searchParams.error[0] : searchParams.error;
 
   const stored = await getCardLayoutRow(guildId, "profile");
-  const layout = normalizeLayout(stored ?? undefined);
+  const themeId = resolveThemeId(stored ?? undefined);
   const previewOrigin = (process.env.CARD_PREVIEW_ORIGIN ?? "https://rem-bot-discord.onrender.com").replace(/\/$/, "");
 
   return (
@@ -52,20 +52,20 @@ export default async function CardsPage(props: CardsPageProps) {
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-slate-900">Card Studio</h1>
             <p className="mt-1 text-sm text-slate-500">
-              ปรับขนาด ผัง และสีของการ์ด <code className="rounded bg-slate-100 px-1 py-0.5 text-[12px]">/profile</code>{" "}
-              ของ <span className="font-medium text-slate-700">{guild.name}</span> — พรีวิวมาจากตัวเรนเดอร์จริงของบอท
+              เลือกธีมสีของการ์ด <code className="rounded bg-slate-100 px-1 py-0.5 text-[12px]">/profile</code> และรายงาน
+              Weekly ของ <span className="font-medium text-slate-700">{guild.name}</span> — พรีวิวมาจากตัวเรนเดอร์จริงของบอท
             </p>
           </div>
         </div>
 
-        {saved ? <Note tone="emerald">บันทึกเลย์เอาต์การ์ดเรียบร้อย — มีผลกับ /profile ทันที</Note> : null}
+        {saved ? <Note tone="emerald">บันทึกธีมการ์ดเรียบร้อย — มีผลกับการ์ด /profile และ Weekly ทันที</Note> : null}
         {errorCode ? <Note tone="rose">{ERROR_MESSAGES[errorCode] ?? "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"}</Note> : null}
 
         <div className="mt-6">
           <CardEditor
             guildId={guildId}
             guildName={guild.name}
-            initialLayout={layout}
+            initialThemeId={themeId}
             previewOrigin={previewOrigin}
           />
         </div>
