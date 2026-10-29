@@ -55,13 +55,13 @@ export function CardEditor({ guildId, guildName, initialThemeId, previewOrigin }
             src={previewUrl}
             alt={`ตัวอย่างการ์ดธีม ${theme.name}`}
             className="w-full rounded-xl shadow-sm ring-1 ring-black/5"
-            width={1000}
-            height={view === "profile" ? 560 : 620}
+            width={800}
+            height={view === "profile" ? 448 : 496}
           />
         </div>
 
         <p className="border-t border-slate-100 px-4 py-2.5 text-[11px] text-slate-400">
-          พรีวิวเรนเดอร์จากบอทจริง — บันทึกธีมแล้วมีผลกับการ์ด /profile และรายงาน Weekly ทันที
+          พรีวิวเรนเดอร์จากบอทจริง (800 px กว้าง) — บันทึกธีมแล้วมีผลกับการ์ด /profile และรายงาน Weekly ทันที
         </p>
       </section>
 
