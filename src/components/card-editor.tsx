@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { DEFAULT_LAYOUT, encodeLayout, type CardLayout } from "@/lib/card";
+import { CARD_PRESETS, DEFAULT_LAYOUT, encodeLayout, matchPreset, type CardLayout } from "@/lib/card";
 import { saveCardLayout } from "@/app/dashboard/actions";
 import { SubmitButton } from "./submit-button";
 
@@ -264,6 +264,39 @@ export function CardEditor({ guildId, guildName, initialLayout, previewOrigin }:
           {numberField("ความกว้างผืนการ์ด", layout.width, (v) => setLayout({ ...layout, width: v }), 600, 1600)}
           {numberField("ความสูงผืนการ์ด", layout.height, (v) => setLayout({ ...layout, height: v }), 320, 900)}
           {numberField("ความโค้งมุม", layout.radius, (v) => setLayout({ ...layout, radius: v }), 0, 48)}
+        </div>
+
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <p className="text-xs font-medium text-slate-500">ธีมสำเร็จรูป</p>
+          <div className="mt-2 grid grid-cols-4 gap-2">
+            {CARD_PRESETS.map((preset) => {
+              const activePreset = matchPreset(layout) === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  title={preset.name}
+                  onClick={() => setLayout((prev) => ({ ...prev, colors: { ...preset.colors } }))}
+                  className={`rounded-lg border p-1.5 text-left transition ${
+                    activePreset
+                      ? "border-blue-500 ring-1 ring-blue-200"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <span
+                    className="block h-8 w-full rounded"
+                    style={{
+                      background: `linear-gradient(135deg, ${preset.colors.bgFrom} 0%, ${preset.colors.bgTo} 55%, ${preset.colors.accent} 100%)`,
+                    }}
+                  />
+                  <span className="mt-1 block truncate text-[10px] text-slate-600">{preset.name}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] leading-4 text-slate-400">
+            ธีมมีผลทั้งการ์ด /profile และรายงาน Weekly — เลือกแล้วยังปรับสีเองต่อได้
+          </p>
         </div>
 
         <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
