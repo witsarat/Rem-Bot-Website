@@ -228,9 +228,14 @@ export default async function GuildDetailPage(props: PageProps<"/dashboard/[guil
               )}
             </p>
           </div>
-          <Link href={`/dashboard/${guildId}/cards`} className="btn-secondary btn-sm ml-auto shrink-0">
-            🎨 ปรับแต่งการ์ด
-          </Link>
+          <div className="ml-auto flex shrink-0 gap-2">
+            <Link href={`/dashboard/${guildId}/cards`} className="btn-secondary btn-sm">
+              🎨 ปรับแต่งการ์ด
+            </Link>
+            <Link href={`/dashboard/${guildId}/rewards`} className="btn-secondary btn-sm">
+              🏅 ยศ/achievements
+            </Link>
+          </div>
         </div>
 
         {/* อัปเกรด Premium (แสดงเฉพาะแพ็กเกจฟรี) */}

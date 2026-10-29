@@ -3,7 +3,14 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { loadGuildAccess } from "@/lib/auth";
-import { upsertGuildSettings, upsertCardLayout } from "@/lib/db";
+import {
+  addRoleRewardDb,
+  deleteRoleRewardDb,
+  saveAchievementTiersDb,
+  saveRewardConfigDb,
+  upsertCardLayout,
+  upsertGuildSettings,
+} from "@/lib/db";
 import { normalizeLayout } from "@/lib/card";
 
 function normalizeChannelId(value: FormDataEntryValue | null): string | null | "invalid" {
@@ -69,4 +76,120 @@ export async function saveCardLayout(formData: FormData): Promise<void> {
 
   revalidatePath(`/dashboard/${guildId}/cards`);
   redirect(`/dashboard/${guildId}/cards?saved=1`);
+}
+
+// ── Achievements + Role rewards ────────────────────────────────
+
+function checkbox(formData: FormData, name: string): boolean {
+  const value = formData.get(name);
+  return value === "on" || value === "true" || value === "1";
+}
+
+/** "3" ชั่วโมง → 10800 วินาที (คืน null ถ้าไม่ถูกต้อง) */
+function parseHours(value: FormDataEntryValue | null): number | null {
+  const hours = Number(typeof value === "string" ? value : "");
+  if (!Number.isFinite(hours) || hours <= 0 || hours > 2000) return null;
+  return Math.round(hours * 3600);
+}
+
+async function requireGuildAdmin(formData: FormData): Promise<string> {
+  const guildId = String(formData.get("guild_id") ?? "").trim();
+  if (!/^\d{17,20}$/.test(guildId)) redirect("/dashboard");
+
+  const access = await loadGuildAccess(guildId);
+  if (!access.ok) redirect(`/dashboard/${guildId}/rewards?error=auth`);
+  return guildId;
+}
+
+/** เปิด/ปิดโมดูล + ห้องประกาศ + โหมดเก็บยศ */
+export async function saveRewardModule(formData: FormData): Promise<void> {
+  const guildId = await requireGuildAdmin(formData);
+
+  const rawChannel = String(formData.get("announce_channel") ?? "").trim();
+  if (rawChannel && !/^\d{17,20}$/.test(rawChannel)) {
+    redirect(`/dashboard/${guildId}/rewards?error=invalid`);
+  }
+
+  const retention = formData.get("retention") === "highest" ? "highest" : "all";
+
+  try {
+    await saveRewardConfigDb(guildId, {
+      announceChannelId: rawChannel || null,
+      achievementsEnabled: checkbox(formData, "achievements_enabled"),
+      rewardsEnabled: checkbox(formData, "rewards_enabled"),
+      retention,
+    });
+  } catch (error) {
+    console.error("[rewards] บันทึกค่าตั้งไม่สำเร็จ:", error);
+    redirect(`/dashboard/${guildId}/rewards?error=save`);
+  }
+
+  revalidatePath(`/dashboard/${guildId}/rewards`);
+  redirect(`/dashboard/${guildId}/rewards?saved=1`);
+}
+
+/** เกณฑ์ achievement 4 ระดับ (ชั่วโมง) */
+export async function saveAchievements(formData: FormData): Promise<void> {
+  const guildId = await requireGuildAdmin(formData);
+
+  const tiers = ["copper", "bronze", "silver", "gold"].map((tier) => ({
+    tier,
+    thresholdSeconds: parseHours(formData.get(`tier_${tier}`)),
+  }));
+
+  if (tiers.some((tier) => tier.thresholdSeconds === null)) {
+    redirect(`/dashboard/${guildId}/rewards?error=invalid`);
+  }
+
+  try {
+    await saveAchievementTiersDb(
+      guildId,
+      tiers.map((tier) => ({ tier: tier.tier, thresholdSeconds: tier.thresholdSeconds as number })),
+    );
+  } catch (error) {
+    console.error("[rewards] บันทึกเกณฑ์ achievement ไม่สำเร็จ:", error);
+    redirect(`/dashboard/${guildId}/rewards?error=save`);
+  }
+
+  revalidatePath(`/dashboard/${guildId}/rewards`);
+  redirect(`/dashboard/${guildId}/rewards?saved=1`);
+}
+
+/** เพิ่มเกณฑ์ให้ยศ */
+export async function addRoleReward(formData: FormData): Promise<void> {
+  const guildId = await requireGuildAdmin(formData);
+
+  const hours = parseHours(formData.get("threshold_hours"));
+  const roleId = String(formData.get("role_id") ?? "").trim();
+
+  if (hours === null || !/^\d{17,20}$/.test(roleId)) {
+    redirect(`/dashboard/${guildId}/rewards?error=invalid`);
+  }
+
+  try {
+    await addRoleRewardDb(guildId, hours, roleId);
+  } catch (error) {
+    console.error("[rewards] เพิ่มเกณฑ์ยศไม่สำเร็จ:", error);
+    redirect(`/dashboard/${guildId}/rewards?error=save`);
+  }
+
+  revalidatePath(`/dashboard/${guildId}/rewards`);
+  redirect(`/dashboard/${guildId}/rewards?saved=1`);
+}
+
+/** ลบเกณฑ์ให้ยศ */
+export async function removeRoleReward(formData: FormData): Promise<void> {
+  const guildId = await requireGuildAdmin(formData);
+  const id = String(formData.get("reward_id") ?? "").trim();
+  if (!/^\d+$/.test(id)) redirect(`/dashboard/${guildId}/rewards?error=invalid`);
+
+  try {
+    await deleteRoleRewardDb(guildId, id);
+  } catch (error) {
+    console.error("[rewards] ลบเกณฑ์ยศไม่สำเร็จ:", error);
+    redirect(`/dashboard/${guildId}/rewards?error=save`);
+  }
+
+  revalidatePath(`/dashboard/${guildId}/rewards`);
+  redirect(`/dashboard/${guildId}/rewards?saved=1`);
 }

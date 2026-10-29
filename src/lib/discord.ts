@@ -70,6 +70,7 @@ interface CacheEntry<T> {
 
 const USER_GUILDS_TTL_MS = 180_000; // 3 นาที — รายชื่อดิสของผู้ใช้สดพอ
 const CHANNELS_TTL_MS = 300_000; // 5 นาที — รายชื่อห้องเปลี่ยนไม่บ่อย
+const ROLES_TTL_MS = 300_000; // 5 นาที — รายชื่อยศเปลี่ยนไม่บ่อย
 const CACHE_KEEP_MS = 30 * 60_000; // เก็บของเก่าไว้ใช้ยามฉุกเฉินได้ไม่เกิน 30 นาที
 
 const userGuildsCache = new Map<string, CacheEntry<DiscordGuild[]>>();
@@ -317,5 +318,54 @@ export async function isBotOnline(): Promise<boolean | null> {
     return data.status === "ok";
   } catch {
     return null;
+  }
+}
+
+/** ยศในเซิร์ฟเวอร์ (สำหรับตัวเลือกในหน้า Role rewards) — ตัดยศของบอท/@everyone ออก */
+export interface DiscordRole {
+  id: string;
+  name: string;
+  color: number;
+  position: number;
+}
+
+const guildRolesCache = new Map<string, CacheEntry<DiscordRole[]>>();
+
+export async function fetchGuildRoles(guildId: string): Promise<DiscordRole[]> {
+  const cached = guildRolesCache.get(guildId);
+  const now = Date.now();
+  if (cached && now - cached.at < ROLES_TTL_MS) return cached.data;
+
+  const token = getBotToken();
+  if (!token) return [];
+
+  try {
+    const res = await fetchDiscord(`${API_BASE}/guilds/${guildId}/roles`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new DiscordApiError(res.status, `ดึงรายชื่อยศไม่สำเร็จ (${res.status})`);
+
+    const roles = (await res.json()) as Array<{
+      id: string;
+      name: string;
+      color: number;
+      position: number;
+      managed: boolean;
+    }>;
+
+    const filtered = roles
+      .filter((role) => role.id !== guildId && !role.managed)
+      .sort((a, b) => b.position - a.position)
+      .map((role) => ({ id: role.id, name: role.name, color: role.color, position: role.position }));
+
+    pruneCache(guildRolesCache, CACHE_KEEP_MS);
+    guildRolesCache.set(guildId, { at: now, data: filtered });
+    return filtered;
+  } catch (error) {
+    if (cached) {
+      console.warn("[discord] ใช้แคชรายชื่อยศเดิมชั่วคราว:", error instanceof Error ? error.message : error);
+      return cached.data;
+    }
+    throw error;
   }
 }

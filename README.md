@@ -14,6 +14,7 @@
 | `/dashboard` | เข้าสู่ระบบด้วย Discord → เลือกเซิร์ฟเวอร์ (เห็นเฉพาะที่ตัวเองเป็นผู้ดูแล) |
 | `/dashboard/<guildId>` | ตั้งค่าห้อง log / ห้องรายงาน + สถิติ + อันดับผู้ใช้ + ประวัติ voice log (ป้าย Premium / ล็อกฟีเจอร์ฝั่งฟรี) |
 | `/dashboard/<guildId>/cards` | **Card Studio** — ลาก/ย่อ/ปรับสีการ์ด /profile พร้อมพรีวิวสดจากบอท |
+| `/dashboard/<guildId>/rewards` | **Achievements & Role rewards** — เกณฑ์ชั่วโมงสะสม + ให้ยศอัตโนมัติ + ห้องประกาศ |
 | `/api/dashboard/<guildId>/export` | ส่งออกประวัติเป็น CSV — **เฉพาะเซิร์ฟเวอร์ Premium** (ตรวจสิทธิ์ทุกครั้ง) |
 | `/terms` · `/privacy` | ข้อกำหนดการให้บริการ · นโยบายความเป็นส่วนตัว |
 | `/api/auth/login` · `/api/auth/callback` | OAuth2 login แดชบอร์ด (scope: identify + guilds) |
