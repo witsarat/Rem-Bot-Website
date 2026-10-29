@@ -6,8 +6,10 @@ import { loadGuildAccess } from "@/lib/auth";
 import {
   addRoleRewardDb,
   countRoleRewards,
+  deleteCardBackground,
   deleteRoleRewardDb,
   saveRewardConfigDb,
+  upsertCardBackground,
   upsertCardLayout,
   upsertGuildSettings,
 } from "@/lib/db";
@@ -166,4 +168,83 @@ export async function removeRoleReward(formData: FormData): Promise<void> {
 
   revalidatePath(`/dashboard/${guildId}/rewards`);
   redirect(`/dashboard/${guildId}/rewards?saved=1`);
+}
+
+// ── พื้นหลังการ์ดจาก Canva ─────────────────────────────────────
+
+const BG_MAX_BYTES = 2 * 1024 * 1024;
+const BG_SIZES = {
+  profile: { width: 1000, height: 560 },
+  weekly: { width: 1000, height: 620 },
+} as const;
+
+/** อ่านขนาดจากหัวไฟล์ PNG (IHDR) */
+function pngSize(data: Buffer): { width: number; height: number } | null {
+  if (data.length < 24) return null;
+  const signature = data.subarray(0, 8).toString("hex");
+  if (signature !== "89504e470d0a1a0a") return null;
+  if (data.subarray(12, 16).toString("ascii") !== "IHDR") return null;
+  return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
+}
+
+/** อัปโหลดพื้นหลังการ์ด (PNG 1000×560 หรือ 1000×620 เท่านั้น) */
+export async function uploadCardBackground(formData: FormData): Promise<void> {
+  const guildId = String(formData.get("guild_id") ?? "").trim();
+  if (!/^\d{17,20}$/.test(guildId)) redirect("/dashboard");
+
+  const access = await loadGuildAccess(guildId);
+  if (!access.ok) redirect(`/dashboard/${guildId}/cards?error=auth`);
+
+  const variant = formData.get("variant") === "weekly" ? "weekly" : "profile";
+  const file = formData.get("background");
+  if (!(file instanceof File) || file.size === 0) {
+    redirect(`/dashboard/${guildId}/cards?error=bg_missing`);
+  }
+  if (file.size > BG_MAX_BYTES) {
+    redirect(`/dashboard/${guildId}/cards?error=bg_size`);
+  }
+
+  const data = Buffer.from(await file.arrayBuffer());
+  const size = pngSize(data);
+  if (!size) redirect(`/dashboard/${guildId}/cards?error=bg_type`);
+
+  const expected = BG_SIZES[variant];
+  if (size.width !== expected.width || size.height !== expected.height) {
+    redirect(`/dashboard/${guildId}/cards?error=bg_dim`);
+  }
+
+  try {
+    await upsertCardBackground(guildId, variant, {
+      mime: "image/png",
+      filename: file.name.slice(0, 120),
+      data,
+    });
+  } catch (error) {
+    console.error("[cards] อัปโหลดพื้นหลังไม่สำเร็จ:", error);
+    redirect(`/dashboard/${guildId}/cards?error=save`);
+  }
+
+  revalidatePath(`/dashboard/${guildId}/cards`);
+  redirect(`/dashboard/${guildId}/cards?saved=bg`);
+}
+
+/** ลบพื้นหลังการ์ด → กลับไปใช้ gradient ของธีม */
+export async function removeCardBackground(formData: FormData): Promise<void> {
+  const guildId = String(formData.get("guild_id") ?? "").trim();
+  if (!/^\d{17,20}$/.test(guildId)) redirect("/dashboard");
+
+  const access = await loadGuildAccess(guildId);
+  if (!access.ok) redirect(`/dashboard/${guildId}/cards?error=auth`);
+
+  const variant = formData.get("variant") === "weekly" ? "weekly" : "profile";
+
+  try {
+    await deleteCardBackground(guildId, variant);
+  } catch (error) {
+    console.error("[cards] ลบพื้นหลังไม่สำเร็จ:", error);
+    redirect(`/dashboard/${guildId}/cards?error=save`);
+  }
+
+  revalidatePath(`/dashboard/${guildId}/cards`);
+  redirect(`/dashboard/${guildId}/cards?saved=bg`);
 }

@@ -586,3 +586,58 @@ export async function getGuildSubscriptions(guildIds: string[]): Promise<Map<str
   }
   return map;
 }
+
+// ─────────────────────────── พื้นหลังการ์ด (Canva) ───────────────────────────
+
+export interface CardBackgroundInfo {
+  filename: string | null;
+  mime: string;
+  bytes: number;
+  updatedAt: string;
+}
+
+/** ข้อมูลพื้นหลังการ์ดที่อัปโหลดไว้ (ไม่ดึงไฟล์จริง — ใช้แสดงสถานะในหน้าเว็บ) */
+export async function getCardBackgroundInfo(
+  guildId: string,
+  variant: "profile" | "weekly",
+): Promise<CardBackgroundInfo | null> {
+  const db = getPool();
+  if (!db) return null;
+
+  const result = await db.query<{ filename: string | null; mime: string; bytes: number; updated_at: string }>(
+    "SELECT filename, mime, bytes, updated_at::text AS updated_at FROM card_backgrounds WHERE guild_id = $1 AND variant = $2",
+    [guildId, variant],
+  );
+  const row = result.rows[0];
+  return row ? { filename: row.filename, mime: row.mime, bytes: row.bytes, updatedAt: row.updated_at } : null;
+}
+
+/** บันทึก/แทนที่พื้นหลังการ์ด */
+export async function upsertCardBackground(
+  guildId: string,
+  variant: "profile" | "weekly",
+  input: { mime: string; filename: string; data: Buffer },
+): Promise<void> {
+  const db = getPool();
+  if (!db) throw new Error("DATABASE_URL ยังไม่ได้ตั้งค่า");
+
+  await db.query(
+    `INSERT INTO card_backgrounds (guild_id, variant, mime, filename, bytes, data, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, now())
+     ON CONFLICT (guild_id, variant) DO UPDATE SET
+       mime = EXCLUDED.mime,
+       filename = EXCLUDED.filename,
+       bytes = EXCLUDED.bytes,
+       data = EXCLUDED.data,
+       updated_at = now()`,
+    [guildId, variant, input.mime, input.filename, input.data.length, input.data],
+  );
+}
+
+/** ลบพื้นหลังการ์ด (กลับไปใช้ gradient ของธีม) */
+export async function deleteCardBackground(guildId: string, variant: "profile" | "weekly"): Promise<void> {
+  const db = getPool();
+  if (!db) throw new Error("DATABASE_URL ยังไม่ได้ตั้งค่า");
+
+  await db.query("DELETE FROM card_backgrounds WHERE guild_id = $1 AND variant = $2", [guildId, variant]);
+}

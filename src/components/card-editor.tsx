@@ -22,8 +22,8 @@ export function CardEditor({ guildId, guildName, initialThemeId, previewOrigin }
 
   const theme = themeById(themeId);
   const previewUrl = useMemo(
-    () => `${previewOrigin}/preview/${view}?theme=${encodeURIComponent(themeId)}`,
-    [previewOrigin, themeId, view],
+    () => `${previewOrigin}/preview/${view}?theme=${encodeURIComponent(themeId)}&guild=${encodeURIComponent(guildId)}`,
+    [previewOrigin, themeId, view, guildId],
   );
 
   return (
@@ -61,7 +61,7 @@ export function CardEditor({ guildId, guildName, initialThemeId, previewOrigin }
         </div>
 
         <p className="border-t border-slate-100 px-4 py-2.5 text-[11px] text-slate-400">
-          พรีวิวเรนเดอร์จากบอทจริง (800 px กว้าง) — บันทึกธีมแล้วมีผลกับการ์ด /profile และรายงาน Weekly ทันที
+          พรีวิวเรนเดอร์จากบอทจริง (800 px กว้าง) — รวมพื้นหลังที่อัปโหลดไว้ (ถ้ามี)
         </p>
       </section>
 

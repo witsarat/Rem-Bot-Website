@@ -3,9 +3,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DashHeader } from "@/components/dash-header";
 import { CardEditor } from "@/components/card-editor";
+import { removeCardBackground, uploadCardBackground } from "../../actions";
 import { Note } from "@/components/note";
 import { loadGuildAccess } from "@/lib/auth";
-import { getCardLayoutRow } from "@/lib/db";
+import { getCardBackgroundInfo, getCardLayoutRow } from "@/lib/db";
 import { resolveThemeId } from "@/lib/card";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,10 @@ const ERROR_MESSAGES: Record<string, string> = {
   auth: "เซสชันหมดอายุหรือคุณไม่มีสิทธิ์ในเซิร์ฟเวอร์นี้ — กรุณาเข้าสู่ระบบใหม่",
   invalid: "ธีมที่เลือกไม่ถูกต้อง กรุณาลองใหม่",
   save: "บันทึกไม่สำเร็จ — กรุณาลองใหม่อีกครั้ง",
+  bg_missing: "ยังไม่ได้เลือกไฟล์ PNG",
+  bg_size: "ไฟล์ใหญ่เกิน 2 MB — ลดขนาดหรือบีบอัดก่อนอัปโหลด",
+  bg_type: "รองรับเฉพาะไฟล์ PNG เท่านั้น (ส่งออกจาก Canva เป็น PNG)",
+  bg_dim: "ขนาดภาพไม่ตรง — /profile ต้อง 1000×560 px และ Weekly ต้อง 1000×620 px",
 };
 
 type CardsPageProps = {
@@ -38,6 +43,10 @@ export default async function CardsPage(props: CardsPageProps) {
 
   const stored = await getCardLayoutRow(guildId, "profile");
   const themeId = resolveThemeId(stored ?? undefined);
+  const backgrounds = {
+    profile: await getCardBackgroundInfo(guildId, "profile"),
+    weekly: await getCardBackgroundInfo(guildId, "weekly"),
+  };
   const previewOrigin = (process.env.CARD_PREVIEW_ORIGIN ?? "https://rem-bot-discord.onrender.com").replace(/\/$/, "");
 
   return (
@@ -69,6 +78,77 @@ export default async function CardsPage(props: CardsPageProps) {
             previewOrigin={previewOrigin}
           />
         </div>
+
+        {/* ── พื้นหลังที่ออกแบบเอง (Canva) ── */}
+        <section className="card mt-6 p-6">
+          <h2 className="text-base font-semibold text-slate-900">พื้นหลังการ์ดจาก Canva</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            อัปโหลดภาพพื้นหลังที่ออกแบบเอง (PNG) — บอทจะวาดข้อมูลทับในตำแหน่งเดิมโดยอัตโนมัติ
+            {" "}ถ้าไม่อัปโหลดจะใช้ gradient ของธีมที่เลือก
+          </p>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {([
+              { variant: "profile" as const, label: "การ์ด /profile", size: "1000×560 px" },
+              { variant: "weekly" as const, label: "การ์ด Weekly", size: "1000×620 px" },
+            ]).map((item) => {
+              const info = backgrounds[item.variant];
+              return (
+                <div key={item.variant} className="rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">{item.label}</p>
+                      <p className="mt-0.5 text-xs text-slate-400">ต้องเป็น PNG ขนาด {item.size} • ไม่เกิน 2 MB</p>
+                    </div>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        info ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {info ? "ใช้พื้นหลังแล้ว" : "ยังไม่มี"}
+                    </span>
+                  </div>
+
+                  {info ? (
+                    <p className="mt-2 truncate text-xs text-slate-500">
+                      {info.filename ?? "background.png"} · {(info.bytes / 1024).toFixed(0)} KB
+                    </p>
+                  ) : null}
+
+                  <form action={uploadCardBackground} encType="multipart/form-data" className="mt-3 space-y-2">
+                    <input type="hidden" name="guild_id" value={guildId} />
+                    <input type="hidden" name="variant" value={item.variant} />
+                    <input
+                      type="file"
+                      name="background"
+                      accept="image/png"
+                      required
+                      className="block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-slate-800"
+                    />
+                    <button type="submit" className="btn-secondary btn-sm">
+                      อัปโหลดพื้นหลัง
+                    </button>
+                  </form>
+
+                  {info ? (
+                    <form action={removeCardBackground} className="mt-2">
+                      <input type="hidden" name="guild_id" value={guildId} />
+                      <input type="hidden" name="variant" value={item.variant} />
+                      <button type="submit" className="text-xs font-medium text-rose-600 hover:text-rose-700">
+                        ลบพื้นหลังนี้
+                      </button>
+                    </form>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="mt-3 text-[11px] leading-5 text-slate-400">
+            เคล็ดลับ: เปิดภาพ &quot;แม่แบบช่อง&quot; ในแชท แล้ววางเป็นเลเยอร์ล่างสุดใน Canva เพื่อดูว่าตรงไหนห้ามวางตัวอักษร
+            — พื้นที่กรอบทั้งหมดบอทจะวาดทับ
+          </p>
+        </section>
 
         <div className="h-10" />
       </main>
